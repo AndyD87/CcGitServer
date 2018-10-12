@@ -172,13 +172,13 @@ class CcGitServer
       {
         case "HEAD":
         case "GET":
-          if($this->checkAuth(false))
+          if($this->checkAuth(true))
           {
             $this->execGet();
           }
           break;
         default:
-          if($this->checkAuth())
+          if($this->checkAuth(false))
           {
             $this->execWebDav();
             CcGitServer::writeDebugLog("Auth done\n");
