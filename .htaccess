@@ -1,0 +1,5 @@
+Options  -MultiViews
+
+RewriteEngine on
+RewriteRule ^(.*)$ git.php?_REWRITE_QUERY_=$1 [L,QSA]
+

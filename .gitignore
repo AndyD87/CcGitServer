@@ -1,0 +1,5 @@
+# ignore projects
+*.git
+
+# debug output:
+CcGitServerLog.txt
