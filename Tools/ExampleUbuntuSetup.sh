@@ -11,7 +11,7 @@
 
 # Install apache and php with modules
 sudo apt-get -y install apache2 php php-xml
-sudo a2enmod redirect
+sudo a2enmod rewrite
 sudo service apache2 restart
 
 # If .htaccess is not already enabled
@@ -40,4 +40,4 @@ sudo chown -R www-data.www-data *
 
 # First clone from repository
 cd ~
-git clone http://localhost/git/Example.git
+git clone http://localhost/git/ExampleProject.git
