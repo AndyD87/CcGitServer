@@ -21,6 +21,9 @@ for other directories is a target but not yet done.
 
 ### Example for apache on Ubuntu:
 
+You can run the following example in one script at **Tools/ExampleUbuntuSetup.sh**.  
+Be aware to use this script in a productive system, it's just an example.
+
 Install apache and php with modules
 
     sudo apt-get install apache2 php php-xml
