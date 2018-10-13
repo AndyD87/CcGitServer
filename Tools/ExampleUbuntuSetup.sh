@@ -10,7 +10,7 @@
 ##
 
 # Install apache and php with modules
-sudo apt-get -f install apache2 php php-xml
+sudo apt-get -y install apache2 php php-xml
 sudo a2enmod redirect
 sudo service apache2 restart
 
