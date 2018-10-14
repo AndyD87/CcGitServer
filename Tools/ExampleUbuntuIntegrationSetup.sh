@@ -38,7 +38,7 @@ fi
 # First git repository
 cd /var/www/html/git
 sudo php git.php create ExampleProject
-sudo chown -R www-data.www-data *
+sudo chown -R www-data.www-data ../*
 
 # First clone from repository
 cd ~

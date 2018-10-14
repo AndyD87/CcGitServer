@@ -64,6 +64,10 @@ The server can be configured to run with different directories too.
 By setting an own implementation of **ICcLinkConverter** to **CcGitServer::setLinkConvertert()**, it is possible to work with projects in different locations.  
 **CcLinkConverter** can be used as an example for a default configuration and can be overloaded to.
 
+You can see an example in /Tools/ExampleUbuntuIntegration/git.php   
+For an working example you can use /Tools/ExampleUbuntuIntegrationSetup.sh  
+Do not use ist in productive systems, it's just for demonstration purpose.
+
 ## User control
 
 It can be seen in CcGitServer::checkAuth.
@@ -77,9 +81,7 @@ This system is very rudimental, and mainly designed to run on internal networks.
 - Security features
     It is dangerous to run it on internet,
 - Avoid dependency from php-xml
-- Portable user control instance to load on init
-- Centralize configuration for supporting different directories
-    ( currently all projects should be in this direcotry or in any subdirectory)
+- Portable user control instance to load on initsubdirectory)
 
 ## Contact
 
