@@ -30,6 +30,7 @@ require_once "CcXmlObject.php";
 require_once "CcWebDavMultistatus.php";
 require_once "CcWebDavResponse.php";
 require_once "CcWebDavLockResponse.php";
+require_once 'CcLinkConverter.php';
 
 const ErrorUnknown = 1;
 const ErrorInvalidMethod = 2;
@@ -52,12 +53,10 @@ const PropLastModified = "lp1:getlastmodified";
 class CcWebDav
 {
   /**
-   * Webserver Root directory like /var/www/html
-   * @var string
+   * @var ILinkConverter
    */
-  private $sRootDir;
-  private $sBaseDir;
-  private $sBaseUrl;
+  private $oLinkConverter = null;
+  
   private $sMethod;
   /**  Default set internal error to -1, it will be cleare on constructor */
   private $iError = -1;
@@ -80,29 +79,33 @@ class CcWebDav
   {
     $this->iError = 0;
   }
-
+  
+  /**
+   * Overwrite any existing link converter
+   * @param ILinkConverter $oLinkConverter
+   */
+  public function setLinkConverter($oLinkConverter)
+  {
+    $this->oLinkConverter = $oLinkConverter;
+  }
+  
+  /**
+   * Get Currently stored link converter or create a default.
+   * @return ILinkConverter
+   */
+  public function getLinkConverter()
+  {
+    if($this->oLinkConverter == null)
+    {
+      $this->oLinkConverter = new CcLinkConverter();
+      $this->oLinkConverter->setupDefault();
+    }
+    return $this->oLinkConverter;
+  }
+  
   public function setDepth ($iDepth)
   {
     $this->iDepth = $iDepth;
-  }
-  
-  public function setRootDir ($sRootDir)
-  {
-    $this->sRootDir = CcStringUtil::removeAllEnding($sRootDir, '/');
-  }
-
-  /**
-   * This path is target for webdav request.
-   * @param string $sBaseDir
-   */
-  public function setBaseDir ($sBaseDir)
-  {
-    $this->sBaseDir = CcStringUtil::removeAllEnding($sBaseDir, '/');
-  }
-  
-  public function setBaseUrl ($sBaseUrl)
-  {
-    $this->sBaseUrl = $sBaseUrl;
   }
 
   public function setMethod ($sMethod)
@@ -151,21 +154,20 @@ class CcWebDav
     {
       CcGitServer::writeDebugLog("WebDav Execution");
       CcGitServer::writeDebugLog("Method:  " . $this->sMethod);
-      CcGitServer::writeDebugLog("BaseDir: " . $this->sBaseDir);
-      CcGitServer::writeDebugLog("RootUrl: " . $this->sBaseUrl);
+      CcGitServer::writeDebugLog("BaseDir: " . $this->getLinkConverter()->getCurrentPath());
+      CcGitServer::writeDebugLog("BaseUrl: " . $this->getLinkConverter()->getCurrentLink());
       CcGitServer::writeDebugLog("Depth:   " . $this->iDepth);
       CcGitServer::writeDebugLog("InputData:");
       CcGitServer::writeDebugLog($sInputData);
       CcGitServer::writeDebugLog("");
       $this->execMethod();
       
-      if($sResponse = $this->oResponse)
+      if($this->oResponse)
       {
         CcGitServer::writeDebugLog("");
         CcGitServer::writeDebugLog("Repsonse:");
-        $sResponse = $this->oResponse->getXml();
+        echo $this->oResponse->getXml();
         CcGitServer::writeDebugLog($this->oResponse->getXml(true));
-        echo $sResponse;
       }        
     }
     return $this->iError == 0;
@@ -206,23 +208,22 @@ class CcWebDav
   {
     if(isset($_SERVER["HTTP_DESTINATION"]))
     {
-      $oUrl = parse_url($_SERVER["HTTP_DESTINATION"]);
-      if(isset($oUrl['path']))
+      $sTargetPath = $this->getLinkConverter()->convertLinkToPath($_SERVER["HTTP_DESTINATION"]);
+      if($sTargetPath)
       {
-        $sTargetPath = $this->sRootDir.$oUrl['path'];
-        if( is_file($this->sBaseDir) &&
+        if( is_file($this->getLinkConverter()->getCurrentPath()) &&
             (!is_file($sTargetPath) || unlink($sTargetPath)) &&
-              (is_dir(dirname($this->sBaseDir)) ||
-              mkdir(dirname($this->sBaseDir))))
+              (is_dir(dirname($this->getLinkConverter()->getCurrentPath())) ||
+              mkdir(dirname($this->getLinkConverter()->getCurrentPath()))))
         {
-          if(rename($this->sBaseDir,$sTargetPath))
+          if(rename($this->getLinkConverter()->getCurrentPath(),$sTargetPath))
           {
             header("HTTP/1.1 200 Ok");
           }
           else 
           {
             CcGitServer::writeDebugLog("rename failed");
-            CcGitServer::writeDebugLog("Move from: ".$this->sBaseDir);
+            CcGitServer::writeDebugLog("Move from: ".$this->getLinkConverter()->getCurrentPath());
             CcGitServer::writeDebugLog("       to: ".$sTargetPath);
             header("HTTP/1.1 406 Not Acceptable");
           }
@@ -248,16 +249,16 @@ class CcWebDav
   
   private function execPut()
   {
-    if(is_file($this->sBaseDir) &&
-      unlink($this->sBaseDir) == false)
+    if(is_file($this->getLinkConverter()->getCurrentPath()) &&
+      unlink($this->getLinkConverter()->getCurrentPath()) == false)
     {
       CcGitServer::writeDebugLog("[ERROR] is_file");
       header("HTTP/1.1 406 Not Acceptable");
     }
-    else if(is_dir(dirname($this->sBaseDir)) ||
-            mkdir(dirname($this->sBaseDir)))
+    else if(is_dir(dirname($this->getLinkConverter()->getCurrentPath())) ||
+            mkdir(dirname($this->getLinkConverter()->getCurrentPath())))
     {
-      $fp = fopen($this->sBaseDir, "w");
+      $fp = fopen($this->getLinkConverter()->getCurrentPath(), "w");
       if($fp)
       {
         if(fwrite($fp, $this->sInput) !== false)
@@ -270,12 +271,12 @@ class CcWebDav
           CcGitServer::writeDebugLog("[ERROR] fwrite");
           header("HTTP/1.1 406 Not Acceptable");
           fclose($fp);
-          unlink($this->sBaseDir);
+          unlink($this->getLinkConverter()->getCurrentPath());
         }
       }
       else
       {
-        CcGitServer::writeDebugLog("[ERROR] fopen ". $this->sBaseDir);
+        CcGitServer::writeDebugLog("[ERROR] fopen ". $this->getLinkConverter()->getCurrentPath());
         header("HTTP/1.1 406 Not Acceptable");
       }
     }
@@ -287,15 +288,15 @@ class CcWebDav
     $this->oRequest = $oParser->parse($this->sInput);
     if($this->oRequest->getTag() == "D:lockinfo")
     {
-      if(is_file($this->sBaseDir.".lock") &&
-         !unlink($this->sBaseDir.".lock"))// @todo remove this line
+      if(is_file($this->getLinkConverter()->getCurrentPath().".lock") &&
+         !unlink($this->getLinkConverter()->getCurrentPath().".lock"))// @todo remove this line
       {
         header("HTTP/1.1 406 Not Acceptable");
       }
       else
       {
         $sGuid = uniqid();
-        $fp = fopen($this->sBaseDir.".lock", "w");
+        $fp = fopen($this->getLinkConverter()->getCurrentPath().".lock", "w");
         if($fp)
         {
           fwrite($fp, $sGuid);
@@ -308,7 +309,7 @@ class CcWebDav
         {
           CcGitServer::writeDebugLog("[ERROR] Creating lock file");
         }
-        if(is_file($this->sBaseDir.".lock"))
+        if(is_file($this->getLinkConverter()->getCurrentPath().".lock"))
         {
           header("HTTP/1.1 200 Ok");
           $this->oResponse = new CcWebDavLockResponse();
@@ -329,9 +330,9 @@ class CcWebDav
   private function execUnlock()
   {
     $bOk = true;
-    if(is_file($this->sBaseDir.".lock"))
+    if(is_file($this->getLinkConverter()->getCurrentPath().".lock"))
     {
-      if(unlink($this->sBaseDir.".lock"))
+      if(unlink($this->getLinkConverter()->getCurrentPath().".lock"))
       {
         header("HTTP/1.1 200 Ok");
       }
@@ -353,8 +354,8 @@ class CcWebDav
   
   private function execMkcol()
   {
-    if(is_dir($this->sBaseDir) ||
-        mkdir($this->sBaseDir))
+    if(is_dir($this->getLinkConverter()->getCurrentPath()) ||
+        mkdir($this->getLinkConverter()->getCurrentPath()))
     {
       header("HTTP/1.1 201 Created");
       CcGitServer::writeDebugLog("Directory created");
@@ -362,7 +363,7 @@ class CcWebDav
     else
     {
       header("HTTP/1.1 406 Not Acceptable");
-      CcGitServer::writeDebugLog("Failed to create directory: ". $this->sBaseDir);
+      CcGitServer::writeDebugLog("Failed to create directory: ". $this->getLinkConverter()->getCurrentPath());
     }
   }
   
@@ -413,9 +414,9 @@ class CcWebDav
   
   private function execPropfindSearch($sCurrentUrl, $aProperties, $iDepth)
   {
-    $sFilePath = $this->sBaseDir.$sCurrentUrl;
+    $sFilePath = $this->getLinkConverter()->getCurrentPath().$sCurrentUrl;
     $oResponse = new CcWebDavResponse();
-    $oResponse->setLink($this->sBaseUrl.$sCurrentUrl);
+    $oResponse->setLink($this->getLinkConverter()->getCurrentLink().$sCurrentUrl);
     $this->oResponse->addResponse($oResponse);
     // Search locking
     

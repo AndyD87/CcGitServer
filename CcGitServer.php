@@ -26,6 +26,7 @@
  */
 require_once "CcStringUtil.php";
 require_once "CcWebDav.php";
+require_once "CcLinkConverter.php";
 
 function __CcGitServer_error_handler($errno, $errstr, $errfile, $errline, $errcontext)
 {
@@ -68,14 +69,8 @@ class CcGitServer
   private static $bDebug = false;
   private static $bIsWeb = false;
   
-  /**
-   * @var string is set by @ref setGitRootDir
-   */
-  private $sGitRootDir = "";
-  /**
-   * @var string is set by @ref setWebRootDir 
-   */
-  private $sWebRootDir = "";
+  private $oLinkConverter = null;
+  
   /**
    * @var string is set by @ref setRelativeDir
    */
@@ -90,84 +85,36 @@ class CcGitServer
     {
       CcGitServer::$bIsWeb = true;
     }
-    if($this->sGitRootDir == "")
-    {
-      if($this->sWebRootDir == "")
-      {
-        // Setup default root directory in same directory as this script
-        $this->sGitRootDir = dirname(__FILE__);
-        // Setup default web root directory in one directory up of this script
-        $this->sWebRootDir = dirname(dirname(__FILE__));
-      }
-      else
-      {
-        $this->sGitRootDir = $this->sWebRootDir;
-      }
-    }
-    else 
-    {
-      // Setup default web root directory in one directory up of this script
-      if($this->sWebRootDir == "")
-      {
-        $this->sWebRootDir = $this->sGitRootDir;
-      }
-    }
-    if( $this->sRelativeDir == "" &&
-        CcStringUtil::startsWith($this->sGitRootDir, $this->sWebRootDir))
-    {
-      $this->sRelativeDir = substr($this->sGitRootDir, strlen($this->sWebRootDir));
-    }
-    set_error_handler ( "__CcGitServer_error_handler", E_ALL);
-    
-    restore_error_handler();
   }
   
-  /**
-   * Set server root directory of git content like /var/www/html
-   * @param string $sWebRootDir: Directory containing webcontent.
-   */
-  public function setWebRootDir($sWebRootDir)
+  public function setLinkConverter($oLinkConverter)
   {
-    $this->sWebRootDir = $sWebRootDir;
+    $this->oLinkConverter = $oLinkConverter;
   }
   
-  /**
-   * Set git root directory of git content like /var/www/html/git
-   * If git root dir is same as server root dir, setWebRootDir is enough.
-   * @param string $sGitRootDir: Directory containing git projects.
-   */
-  public function setGitRootDir($sGitRootDir)
+  public function getLinkConverter()
   {
-    $this->sGitRootDir = $sGitRootDir;
-  }
-  
-  /**
-   * @brief This String describs the relative path to git root dir within webserver
-   *        For example:
-   *          Webserver at: /var/www/html
-   *          Gitserver at: /var/www/html/git
-   *          This variable: /git
-   * @param string $sRelativeDir: Directory containing git projects.
-   */
-  public function setRelativeDir($sRelativeDir)
-  {
-    $this->sRelativeDir = $sRelativeDir;
+    if($this->oLinkConverter == null)
+    {
+      $this->oLinkConverter = new CcLinkConverter();
+      $this->oLinkConverter->setupDefault();
+    }
+    return $this->oLinkConverter;
   }
   
   public function exec()
   {
-    if(CcGitServer::$bIsWeb)
+    set_error_handler ( "__CcGitServer_error_handler", E_ALL);
+    
+    if(CcGitServer::$bIsWeb &&
+        $this->getLinkConverter()->isValid() == false)
     {
-      if(isset($_SERVER["REQUEST_URI"]))
-      {
-        $_SERVER["REQUEST_URI"] = CcGitServer::cleanProjectPath($_SERVER["REQUEST_URI"]);
-      }
-      if(isset($_SERVER["REDIRECT_URL"]))
-      {
-        $_SERVER["REDIRECT_URL"] = CcGitServer::cleanProjectPath($_SERVER["REDIRECT_URL"]);
-      }
+      $this->writeDebugLog("Links and Paths are not valid");
+      header("HTTP/1.1 406 Not Acceptable");
+    }
+    else if(CcGitServer::$bIsWeb)
+    {
       $this->sMethod = $_SERVER['REQUEST_METHOD'];
-      CcGitServer::writeDebugLog($this->sMethod);
       switch ($this->sMethod)
       {
         case "HEAD":
@@ -181,13 +128,13 @@ class CcGitServer
           if($this->checkAuth(false))
           {
             $this->execWebDav();
-            CcGitServer::writeDebugLog("Auth done\n");
           }
           break;
       }
     }
     else
     {
+      // CLI execution, check arguments
       global $argv, $argc;
       if(is_array($argv))
       {
@@ -208,6 +155,8 @@ class CcGitServer
         echo "ERROR not in cli?";
       }
     }
+    
+    restore_error_handler();
   }
   
   public function checkAuth($bIsGet = false)
@@ -244,112 +193,102 @@ class CcGitServer
     return $bAuthSuccess;
   }
   
-  public static function execGit($sParam, $sWorkingDir)
-  {
-    $sCurrentDir = getcwd();
-    $aOutput = array();
-    $iReturn = -1;
-    if( chdir($sWorkingDir))
-    {
-      exec("git ". $sParam, $aOutput, $iReturn);
-    }
-    else
-    {
-      CcGitServer::writeDebugLog("Direcotry not existing");
-    }
-      
-    chdir($sCurrentDir);
-    return $iReturn == 0;
-  }
-  
-  
   public function createRepository($sPath)
   {
     $bSuccess = true;
-    $sPath = CcStringUtil::removeAllEnding($sPath, ".git");
-    $sPathGit = $sPath.".git";
-    if( is_dir($sPathGit) || is_file($sPathGit) ||
-        is_dir($sPath) || is_file($sPath))
+    if($this->getLinkConverter()->getRootPath())
     {
-      CcGitServer::writeDebugLog("project already exists");
-      $bSuccess = false;
-    }
-    else
-    {
-      if($bSuccess && mkdir($sPathGit, 0775, true) == false)
+      $sPath = CcStringUtil::removeAllEnding($sPath, ".git");
+      $sPath = $this->getLinkConverter()->getRootPath()."/".$sPath;
+      $sPathGit = $sPath.".git";
+      if( is_dir($sPathGit) || is_file($sPathGit) ||
+          is_dir($sPath) || is_file($sPath))
       {
-        CcGitServer::writeDebugLog("failed to create project directory");
+        CcGitServer::writeDebugLog("project already exists");
         $bSuccess = false;
-      }
-      
-      if($bSuccess && CcGitServer::execGit("init --bare", $sPathGit) == false)
-      {
-        CcGitServer::writeDebugLog("failed to init");
-        $bSuccess = false;
-      }
-      
-      if($bSuccess && CcGitServer::execGit("clone \"$sPathGit\"", dirname($sPathGit)) == false)
-      {
-        CcGitServer::writeDebugLog("failed to clone");
-        $bSuccess = false;  
-      }
-      
-      if($bSuccess)
-      {
-        $oResult = file_put_contents($sPath."/README.md", "Init git", FILE_APPEND);
-        if($oResult === false)
-        {
-          CcGitServer::writeDebugLog("failed to write ".$sPath."/README.md");
-          $bSuccess = false;
-        }
-      }
-      
-      if($bSuccess)
-      {
-        if(CcGitServer::execGit("add README.md", $sPath) !== FALSE)
-        {
-          // No check here, it can work but return value != 0 is possible
-        }
-      }
-      
-      if($bSuccess)
-      {
-        if(CcGitServer::execGit('commit -am "first commit"', $sPath) !== FALSE)
-        {
-          // No check here, it can work but return value != 0 is possible
-        }
-      }
-      
-      if($bSuccess)
-      {
-        if(CcGitServer::execGit('push origin master', $sPath) !== FALSE)
-        {
-          // No check here, it can work but return value != 0 is possible
-        }
-      }
-      
-      if($bSuccess)
-      {
-        if(rrmdir($sPath))
-        {
-          CcGitServer::writeDebugLog("Repository '$sPath' successfully created");
-        }
-        else
-        {
-          CcGitServer::writeDebugLog("Failed to remove '$sPath'");
-        }
       }
       else
       {
-        if(is_dir($sPath))
+        if($bSuccess && mkdir($sPathGit, 0775, true) == false)
         {
-          rrmdir($sPath);
+          CcGitServer::writeDebugLog("failed to create project directory");
+          $bSuccess = false;
         }
-        if(is_dir($sPathGit))
+        
+        if($bSuccess && CcGitServer::execGit("init --bare", $sPathGit) == false)
         {
-          rrmdir($sPathGit);
+          CcGitServer::writeDebugLog("failed to init");
+          $bSuccess = false;
+        }
+        
+        if($bSuccess && CcGitServer::execGit("clone \"$sPathGit\"", dirname($sPathGit)) == false)
+        {
+          CcGitServer::writeDebugLog("failed to clone");
+          $bSuccess = false;  
+        }
+        
+        if($bSuccess)
+        {
+          $oResult = file_put_contents($sPath."/README.md", "Init git", FILE_APPEND);
+          if($oResult === false)
+          {
+            CcGitServer::writeDebugLog("failed to write ".$sPath."/README.md");
+            $bSuccess = false;
+          }
+        }
+        
+        if($bSuccess)
+        {
+          if(CcGitServer::execGit("add README.md", $sPath) !== FALSE)
+          {
+            // No check here, it can work but return value != 0 is possible
+          }
+        }
+        
+        if($bSuccess)
+        {
+          if(CcGitServer::execGit('commit -am "first commit"', $sPath) !== FALSE)
+          {
+            // No check here, it can work but return value != 0 is possible
+          }
+        }
+        
+        if($bSuccess)
+        {
+          if(CcGitServer::execGit('push origin master', $sPath) !== FALSE)
+          {
+            // No check here, it can work but return value != 0 is possible
+          }
+        }
+        
+        if($bSuccess)
+        {
+          if(rrmdir($sPath))
+          {
+            CcGitServer::writeDebugLog("Repository '$sPath' successfully created");
+          }
+          else
+          {
+            CcGitServer::writeDebugLog("Failed to remove '$sPath'");
+          }
+        }
+        else
+        {
+          if(is_dir($sPath))
+          {
+            rrmdir($sPath);
+          }
+          if(is_dir($sPathGit))
+          {
+            rrmdir($sPathGit);
+          }
         }
       }
+    }
+    else
+    {
+      $bSuccess = false;
+      CcGitServer::writeDebugLog("No root dir found");
     }
     return $bSuccess;
   }
@@ -363,55 +302,56 @@ class CcGitServer
         "[0-9a-f]{2}\/[0-9a-f]{38}|".
         "pack\/pack-[0-9a-f]{40}\.(pack|idx))".
         "|git-(upload|receive)-pack)/";
-    if(0 == preg_match($sRegEx, $_SERVER["REQUEST_URI"]))
+    if( //CcGitServer::isGitHttpBackendAvailable() == false ||
+        0 == preg_match($sRegEx, $this->getLinkConverter()->getCurrentPath()))
     {
-      if(is_file($this->sGitRootDir.$_SERVER["REQUEST_URI"]))
+      CcGitServer::writeDebugLog("GET regular");
+      if(is_file($this->getLinkConverter()->getCurrentPath()))
       {
-        echo file_get_contents($this->sGitRootDir.$_SERVER["REQUEST_URI"]);
-        CcGitServer::writeDebugLog("RegEx not matching: ".$_SERVER["REQUEST_URI"]);
+        echo file_get_contents($this->getLinkConverter()->getCurrentPath());
+      }
+      else
+      {
+        CcGitServer::writeDebugLog($this->getLinkConverter()->getCurrentPath());
+        header('HTTP/1.0 404 Not Found');
       }
     }
     else
     {
+      CcGitServer::writeDebugLog("GET git-http-backend");
       $bWriteContent = true;
       if ($this->sMethod == "HEAD")
       {
         $bWriteContent = false;
       }
       // Prepare Path to project by trim slashes
-      $_SERVER["DOCUMENT_ROOT"] = $this->sGitRootDir;
-      $_SERVER["CONTEXT_DOCUMENT_ROOT"] = $this->sGitRootDir;
+      $_SERVER["DOCUMENT_ROOT"] = $this->getLinkConverter()->getRootPath();
+      $_SERVER["CONTEXT_DOCUMENT_ROOT"] = $this->getLinkConverter()->getRootPath();
+      $_SERVER["QUERY_STRING"] = $this->getLinkConverter()->getRelativePath();
       // Copy server data to environment
       if (is_array($_SERVER))
       {
         foreach ($_SERVER as $key => $value)
         {
-          if ($key == "QUERY_STRING")
-          {
-            CcGitServer::setEnv("QUERY_STRING", $_SERVER["REQUEST_URI"]);
-          }
-          else
-          {
-            CcGitServer::setEnv($key, $value);
-          }
+          CcGitServer::setEnv($key, $value);
         }
       }
       
       // Setup git-http-backend paths
-      CcGitServer::setEnv("GIT_PROJECT_ROOT", $this->sGitRootDir);
+      CcGitServer::setEnv("GIT_PROJECT_ROOT", $this->getLinkConverter()->getRootPath());
       CcGitServer::setEnv("GIT_HTTP_EXPORT_ALL", "");
-      CcGitServer::setEnv("PATH_INFO", $_SERVER["REDIRECT_URL"]);
+      CcGitServer::setEnv("PATH_INFO", $this->getLinkConverter()->getRelativePath());
       
       // execute git-core/git-http-backend
       $stdout = "";
       if (is_file("/usr/lib/git-core/git-http-backend"))
       {
         $stdout = shell_exec(
-            "cd \"$this->sGitRootDir\" & /usr/lib/git-core/git-http-backend");
+            "cd \"".$this->getLinkConverter()->getRootPath()."\" & /usr/lib/git-core/git-http-backend");
       }
       else
       {
-        $stdout = shell_exec("cd \"$this->sGitRootDir\" & git http-backend");
+        $stdout = shell_exec("cd \"$this->getLinkConverter()->getRootPath()\" & git http-backend");
       }
       if (is_array($stdout))
       {
@@ -473,15 +413,8 @@ class CcGitServer
   private function execWebDav()
   {
     $oWebDav = new CcWebDav();
-    CcGitServer::writeDebugLog($this->sGitRootDir." ".$_SERVER['REQUEST_URI']);
-    $oWebDav->setBaseDir($this->sGitRootDir.$_SERVER['REQUEST_URI']);
-    $oWebDav->setRootDir($this->sWebRootDir);
+    $oWebDav->setLinkConverter($this->oLinkConverter);
     $oWebDav->setMethod($this->sMethod);
-    
-    // Generate base url from incoming string
-    $sBaseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http");
-    $sBaseUrl .= "://".$_SERVER['HTTP_HOST'].$this->sRelativeDir.$_SERVER['REQUEST_URI'];
-    $oWebDav->setBaseUrl($sBaseUrl);
     
     if (function_exists('getallheaders'))
     {
@@ -495,6 +428,24 @@ class CcGitServer
     $sDataRaw = file_get_contents('php://input');
     
     $oWebDav->exec($sDataRaw);
+  }
+  
+  public static function execGit($sParam, $sWorkingDir)
+  {
+    $sCurrentDir = getcwd();
+    $aOutput = array();
+    $iReturn = -1;
+    if( chdir($sWorkingDir))
+    {
+      exec("git ". $sParam, $aOutput, $iReturn);
+    }
+    else
+    {
+      CcGitServer::writeDebugLog("Direcotry not existing");
+    }
+    
+    chdir($sCurrentDir);
+    return $iReturn == 0;
   }
   
   public static function setEnv ($Key, $Value, $Flag = FILE_APPEND)
@@ -524,6 +475,23 @@ class CcGitServer
     CcGitServer::writeDebugLog(CcStringUtil::getVarDump($errcontext));
     CcGitServer::writeDebugLog("");
     return null;
+  }
+  
+  private static function isGitHttpBackendAvailable()
+  {
+    $bRet = false;
+    
+    if(!function_exists("shell_exec"))
+    {
+      $bRet = false;
+    }
+    else if (is_file("/usr/lib/git-core/git-http-backend") ||
+        is_file("git-core/git-http-backend") ||
+        is_file("git-http-backend"))
+    {
+      $bRet = true;
+    }
+    return $bRet;
   }
   
   private static function parseHeader ($Input, &$Offset)
@@ -563,19 +531,5 @@ class CcGitServer
     }
     $Offset = $uiCurrentOffest;
     return $aLines;
-  }
-  
-  private function cleanProjectPath ($sProject)
-  {
-    $sProject = str_replace("//", "/", $sProject);
-    CcGitServer::writeDebugLog($sProject." ".$this->sRelativeDir);
-    if (CcStringUtil::startsWith($sProject, $this->sRelativeDir))
-    {
-      $sProject = substr($sProject, strlen($this->sRelativeDir));
-    }
-    $sProject = CcStringUtil::removeAllEnding($sProject, '/');
-    $sProject = CcStringUtil::removeAllLeading($sProject, '/');
-    $sProject = "/" . $sProject;
-    return $sProject;
   }
 }

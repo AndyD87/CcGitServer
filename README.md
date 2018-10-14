@@ -7,17 +7,21 @@ For example, a git repository with apache requires to setup *DAV* in it's http.c
 
 CcGitServer implements a very simplified DAV Server to communicate with git.
 
+## Requirements
+
 Nevertheless some requirements are necessary:
  - Webserver with rewrite support
    - Apache2: a2enmod rewrite
  - php >= 5.0
  - php-xml
+ 
+Recommended but not necessary
  - git with git-http-backend on server
  
 ## Setup
 
-This project is designe to run in *root* or in *root/git* directory of an webserver. The support
-for other directories is a target but not yet done.
+This project is designed to run without configuration in any directory in an webserver. Just the requirements as definied in [Requirements](.#Requirements)
+
 
 ### Example for apache on Ubuntu:
 
@@ -51,6 +55,14 @@ First clone from repository
 
     cd ~
     git clone http://localhost/git/Example.git
+
+## Integration
+
+Without settings, CcGitServer can run standalone without configuration in any subdirectory.
+The server can be configured to run with different directories too.
+
+By setting an own implementation of **ICcLinkConverter** to **CcGitServer::setLinkConvertert()**, it is possible to work with projects in different locations.  
+**CcLinkConverter** can be used as an example for a default configuration and can be overloaded to.
 
 ## User control
 

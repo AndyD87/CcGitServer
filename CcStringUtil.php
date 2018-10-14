@@ -79,6 +79,44 @@ class CcStringUtil
   }
   
   /**
+   * Clean a path by removing all .. and //
+   * Example 
+   *   /var/www/html/subdir//../subdir2//index.php -> /var/www/html/subdir2/index.php
+   * @param string $sPath
+   * @return string Cleaned path
+   */
+  static public function cleanPath($sPath)
+  {
+    $aPath = explode("/", $sPath);
+    $aNewPath = array();
+    $sLeading = "";
+    if(isset($aPath[0]) && $aPath[0]=="")
+    {
+      // Path starts with path delimiter
+      $sLeading = "/";
+    }
+    foreach ($aPath as $sPath)
+    {
+      switch ($sPath)
+      {
+        case "":
+        case ".":
+          // ignore
+          break;
+        case "..":
+          if(count($aNewPath) > 0)
+          {
+            array_pop($aNewPath);
+          }
+          break;
+        default:
+          $aNewPath[] = $sPath;
+      }
+    }
+    return $sLeading.implode("/", $aNewPath);
+  }
+  
+  /**
    * @brief This method generates a string like var_dump will do
    * @param mixed $var: Variable to dump
    * @return string in vardump format
