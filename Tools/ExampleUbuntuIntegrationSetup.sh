@@ -42,4 +42,8 @@ sudo chown -R www-data.www-data ../*
 
 # First clone from repository
 cd ~
-git clone http://localhost/git/repositories/ExampleProject.git
+git clone http://TestUser:TestPW@localhost/git/repositories/ExampleProject.git
+cd ExampleProject
+echo " " >> README.md
+git commit -am "TestCommit"
+git push

@@ -18,7 +18,7 @@
  * along with CcGitServer.  If not, see <http://www.gnu.org/licenses/>.
  **/
 /**
- * @page      CcWebDavResponse
+ * @file      CcWebDavResponse.php
  * @author    Andreas Dirmeier
  * @par       Language: PHP
  *

@@ -18,7 +18,7 @@
  * along with CcGitServer.  If not, see <http://www.gnu.org/licenses/>.
  **/
 /**
- * @page      CcXmlParser
+ * @file      CcXmlParser.php
  * @author    Andreas Dirmeier
  * @par       Language: PHP
  *

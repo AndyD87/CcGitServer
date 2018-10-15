@@ -18,64 +18,48 @@
  * along with CcGitServer.  If not, see <http://www.gnu.org/licenses/>.
  **/
 /**
- * @page      CcGitServer
+ * @file      CcGitServer.php
  * @author    Andreas Dirmeier
  * @par       Language: PHP
- * 
+ *
  * Description for class CcGitServer
  */
 require_once "CcStringUtil.php";
+require_once "CcFilesystemUtil.php";
 require_once "CcWebDav.php";
 require_once "CcLinkConverter.php";
-
-function __CcGitServer_error_handler($errno, $errstr, $errfile, $errline, $errcontext)
-{
-  return CcGitServer::error_handler($errno, $errstr, $errfile, $errline, $errcontext);
-}
-
-/**
- * @brief recursive remove directory
- */
-function rrmdir($dir)
-{
-  $bSuccess = true;
-  if (is_dir($dir)) 
-  {
-    $oItems = scandir($dir);
-    if($oItems !== false)
-    {
-      foreach ($oItems as $oItem) 
-      {
-        if ($oItem != "." && $oItem != "..") 
-        {
-          if (filetype($dir."/".$oItem) == "dir")
-          {
-            $bSuccess &= rrmdir($dir."/".$oItem);
-          }
-          else 
-          {
-            $bSuccess &= unlink($dir."/".$oItem);
-          }
-        }
-      }
-    }
-    $bSuccess &= rmdir($dir);
-  }
-  return $bSuccess;
-}
+require_once "CcGitServerAuth.php";
 
 class CcGitServer
 {
-  private static $bDebug = false;
-  private static $bIsWeb = false;
-  
-  private $oLinkConverter = null;
+  /**
+   * Enable/disable debug mode for generating debug output to logfile
+   * @var bool true for debug output
+   */
+  private static $bDebug = true;
   
   /**
-   * @var string is set by @ref setRelativeDir
+   * Will be set from constructor and describes if current environment is a webserver.
+   * Indicator for this value is $_SERVER['REQUEST_METHOD']
+   * @var bool true if we are called from webserver.
    */
-  private $sRelativeDir = "";
+  private static $bIsWeb = false;
   
+  /**
+   * Link converter to match http link with local filesystem
+   * @var ILinkConverter
+   */
+  private $oLinkConverter = null;
+  /**
+   * Authentication manager to check user rights for get, dav and admin
+   * @var IGitServerAuth
+   */
+  private $oAuth = null;
+  
+  /**
+   * Current running method like GET and PUT
+   * @var string
+   */
   private $sMethod ="";
   
   public function __construct()
@@ -102,10 +86,23 @@ class CcGitServer
     return $this->oLinkConverter;
   }
   
+  public function setAuth($oAuth)
+  {
+    $this->oAuth = $oAuth;
+  }
+  
+  public function getAuth()
+  {
+    if($this->oAuth == null)
+    {
+      $this->oAuth = new CcGitServerAuth();
+      $this->oAuth->setupDefault();
+    }
+    return $this->oAuth;
+  }
+  
   public function exec()
   {
-    set_error_handler ( "__CcGitServer_error_handler", E_ALL);
-    
     if(CcGitServer::$bIsWeb &&
         $this->getLinkConverter()->isValid() == false)
     {
@@ -119,13 +116,14 @@ class CcGitServer
       {
         case "HEAD":
         case "GET":
-          if($this->checkAuth(true))
+          if($this->getAuth()->authGet())
           {
             $this->execGet();
           }
           break;
         default:
-          if($this->checkAuth(false))
+          // @todo check for repository create with admin privilegues
+          if($this->getAuth()->authDav())
           {
             $this->execWebDav();
           }
@@ -155,25 +153,32 @@ class CcGitServer
         echo "ERROR not in cli?";
       }
     }
-    
-    restore_error_handler();
   }
   
   public function checkAuth($bIsGet = false)
   {
     $bAuthSuccess = false;
-    if($bIsGet)
+    $bAuthRequired = false;
+    if(isset($_GET["service"]) && $_GET["service"] == "git-receive-pack")
+    {
+      $bAuthRequired = true;
+    }
+    else if($bIsGet )
     {
       // Default allow get request
       $bAuthSuccess = true;
     }
-    else 
+    else
+    {
+      $bAuthRequired = true;
+    }
+    if($bAuthRequired)
     {
       if(!isset($_SERVER['PHP_AUTH_USER']) ||
           !isset($_SERVER['PHP_AUTH_PW']))
       {
         header('WWW-Authenticate: Basic realm="Git"');
-        header('HTTP/1.1 401 Unauthorized');
+        header('HTTP/1.1 401 Authorization Required');
         CcGitServer::writeDebugLog("Auth required\n");
         //CcGitServer::writeDebugLog(CcStringUtil::getVarDump($_SERVER));
       }
@@ -224,7 +229,7 @@ class CcGitServer
         if($bSuccess && CcGitServer::execGit("clone \"$sPathGit\"", dirname($sPathGit)) == false)
         {
           CcGitServer::writeDebugLog("failed to clone");
-          $bSuccess = false;  
+          $bSuccess = false;
         }
         
         if($bSuccess)
@@ -263,7 +268,7 @@ class CcGitServer
         
         if($bSuccess)
         {
-          if(rrmdir($sPath))
+          if(CcFilesystemUtil::RemoveDir($sPath, true))
           {
             CcGitServer::writeDebugLog("Repository '$sPath' successfully created");
           }
@@ -276,11 +281,11 @@ class CcGitServer
         {
           if(is_dir($sPath))
           {
-            rrmdir($sPath);
+            CcFilesystemUtil::RemoveDir($sPath, true);
           }
           if(is_dir($sPathGit))
           {
-            rrmdir($sPathGit);
+            CcFilesystemUtil::RemoveDir($sPathGit, true);
           }
         }
       }
@@ -463,18 +468,6 @@ class CcGitServer
     {
       echo $Message . "\n";
     }
-  }
-  
-  public static function error_handler ($errno, $errstr, $errfile, $errline, $errcontext)
-  {
-    CcGitServer::writeDebugLog("ErrNr:   $errno");
-    CcGitServer::writeDebugLog("ErrStr:  $errstr");
-    CcGitServer::writeDebugLog("ErrFile: $errfile");
-    CcGitServer::writeDebugLog("ErrLine: $errline");
-    CcGitServer::writeDebugLog("ErrCtx:");
-    CcGitServer::writeDebugLog(CcStringUtil::getVarDump($errcontext));
-    CcGitServer::writeDebugLog("");
-    return null;
   }
   
   private static function isGitHttpBackendAvailable()

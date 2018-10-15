@@ -18,25 +18,20 @@
  * along with CcGitServer.  If not, see <http://www.gnu.org/licenses/>.
  **/
 /**
- * @file      CcWebDavMultistatus.php
+ * @file      IGitServerAuth.php
  * @author    Andreas Dirmeier
  * @par       Language: PHP
  *
- * Description for class CcWebDavMultistatus
+ * Description for class IGitServerAuth
  */
-require_once 'CcXmlObject.php';
 
-class CcWebDavMultistatus extends CcXmlObject
+/**
+ * Interface to manage User control
+ * @author Andreas Dirmeier
+ */
+interface IGitServerAuth
 {
-
-  function __construct ()
-  {
-    parent::__construct("D:multistatus");
-  }
-
-  function addResponse ($oResponse)
-  {
-    $this->addNode($oResponse);
-  }
+  public function authAdmin();
+  public function authGet();
+  public function authDav();
 }
-
