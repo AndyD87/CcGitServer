@@ -69,11 +69,11 @@ class CcGitServerAuthUser
    */
   public function login($sUsername, $sPassword)
   {
-    $bRet = true;
+    $bRet = false;
     if($sUsername == $this->sUsername &&
         $sPassword == $this->sPassword)
     {
-      $bRet = false;
+      $bRet = true;
     }
     return $bRet;
   }
@@ -169,7 +169,7 @@ class CcGitServerAuth implements IGitServerAuth
        isset($_SERVER['PHP_AUTH_PW']))
     {
       $sUsername = $_SERVER['PHP_AUTH_USER'];
-      $sPassword = hash('sha512', $_SERVER['PHP_AUTH_PW']);
+      $sPassword = hash('sha256', $_SERVER['PHP_AUTH_PW']);
       foreach($this->m_aUserList as $oUser)
       {
         if ($oUser->login($sUsername, $sPassword))

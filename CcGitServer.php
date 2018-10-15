@@ -38,7 +38,7 @@ class CcGitServer
    * true for debug output
    * @var bool $bDebug
    */
-  private static $bDebug = true;
+  private static $bDebug = false;
   
   /**
    * Will be set from constructor and describes if current environment is a webserver.

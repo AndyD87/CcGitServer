@@ -87,6 +87,12 @@ class CcWebDav
   private $oResponse = null;
   
   /**
+   * Input offset to handle large inputs too
+   * @var integer $iInputOffset
+   */
+  private static $iInputOffset = 0;
+  
+  /**
    * Nothing to set on construct
    */
   public function __construct ()
@@ -115,24 +121,6 @@ class CcWebDav
       $this->oLinkConverter->setupDefault();
     }
     return $this->oLinkConverter;
-  }
-  
-  /**
-   * Get data from input stream
-   * @param bool $bChunked: if true a maximum of 100k will be read at once 
-   * @return string
-   */
-  public function getInpuData($bChunked)
-  {
-    if($bChunked)
-    {
-      // return a maximum of 100k
-      return file_get_contents('php://input', FALSE, NULL, 0, 102400);
-    }
-    else
-    {
-      return file_get_contents('php://input');
-    }
   }
   
   /**
@@ -317,22 +305,13 @@ class CcWebDav
       $fp = fopen($this->getLinkConverter()->getCurrentPath(), "w");
       if($fp)
       {
-        $bDone = false;
         $bSuccess = true;
-        while($bDone == false)
+        $sData = CcWebDav::getInputData(false);
+        if($sData && strlen($sData) > 0)
         {
-          $sData = $this->getInpuData(true);
-          if(strlen($sData) > 0)
+          if(fwrite($fp, $sData)=== false)
           {
-            if(fwrite($fp, $sData)=== false)
-            {
-              $bSuccess = false;
-              $bDone = true;
-            }
-          }
-          else 
-          {
-            $bDone = true;
+            $bSuccess = false;
           }
         }
         if($bSuccess)
@@ -359,7 +338,7 @@ class CcWebDav
   private function execLock()
   {
     $oParser = new CcXmlParser();
-    $this->oRequest = $oParser->parse($this->getInpuData());
+    $this->oRequest = $oParser->parse(CcWebDav::getInputData());
     if($this->oRequest->getTag() == "D:lockinfo")
     {
       if(is_file($this->getLinkConverter()->getCurrentPath().".lock") &&
@@ -444,41 +423,50 @@ class CcWebDav
   private function execPropfind()
   {
     $oParser = new CcXmlParser();
-    $this->oRequest = $oParser->parse($this->getInpuData());
-    $this->oResponse = new CcWebDavMultistatus();
-    if($this->oRequest->getTag() == "D:propfind")
+    $sInputData = CcWebDav::getInputData();
+    if($sInputData)
     {
-      header("HTTP/1.1 207 Multi-Status");
-      $oPathNode = $this->oRequest->getNode("D:prop");
-      $bAllProp = false; // Default set all prop
-      $aProperties = array();
-      if($oPathNode == null)
+      CcGitServer::writeDebugLog($sInputData);
+      $this->oRequest = $oParser->parse($sInputData);
+      $this->oResponse = new CcWebDavMultistatus();
+      if($this->oRequest->getTag() == "D:propfind")
       {
-        $oPathNode = $this->oRequest->getNode(PropAll);
+        header("HTTP/1.1 207 Multi-Status");
+        $oPathNode = $this->oRequest->getNode("D:prop");
+        $bAllProp = false; // Default set all prop
+        $aProperties = array();
         if($oPathNode == null)
         {
-          $this->setError(ErrorUnknownInputData, "No given properties");
+          $oPathNode = $this->oRequest->getNode(PropAll);
+          if($oPathNode == null)
+          {
+            $this->setError(ErrorUnknownInputData, "No given properties");
+          }
+          else
+          {
+            $aProperties[] = PropAll;
+            $bAllProp = true;
+          }
         }
-        else
+        // Receive all required props
+        if($this->isAllOk() && $bAllProp == false)
         {
-          $aProperties[] = PropAll;
-          $bAllProp = true;
+          foreach($oPathNode->getNodes() as $oNode)
+          {
+            $aProperties[] = $oNode->getTag();          
+          }
         }
-      }
-      // Receive all required props
-      if($this->isAllOk() && $bAllProp == false)
-      {
-        foreach($oPathNode->getNodes() as $oNode)
+        // Receive all required props
+        if($this->isAllOk())
         {
-          $aProperties[] = $oNode->getTag();          
+          $this->execPropfindSearch("", $aProperties, $this->iDepth);
         }
+        
       }
-      // Receive all required props
-      if($this->isAllOk())
+      else
       {
-        $this->execPropfindSearch("", $aProperties, $this->iDepth);
+        $this->setError(ErrorMethodNotMatchingInputData);
       }
-      
     }
     else
     {
@@ -554,5 +542,16 @@ class CcWebDav
       }
     }
   }
+  
+  /**
+   * Get data from input stream
+   * @param bool $bChunked: if true a maximum of 100k will be read at once
+   * @return string
+   */
+  private static function getInputData()
+  {
+    return file_get_contents('php://input');
+  }
+  
 }
 
