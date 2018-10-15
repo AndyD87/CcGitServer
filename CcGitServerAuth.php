@@ -185,12 +185,12 @@ class CcGitServerAuth implements IGitServerAuth
   
   private function sendAuthRequired()
   {
-    header('WWW-Authenticate: Basic realm="Git"');
+    header('WWW-Authenticate: Basic realm="CcGitServer"');
     header('HTTP/1.1 401 Authorization Required');
   }
   
   private function sendAccessDenied()
   {
-    header('HTTP/1.1 401 Access Denied');
+    header('HTTP/1.1 403 Access Denied');
   }
 }

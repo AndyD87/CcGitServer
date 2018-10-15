@@ -134,17 +134,12 @@ class CUserAuth implements IGitServerAuth
         $_SERVER['PHP_AUTH_USER'] == "TestUser" &&
         $_SERVER['PHP_AUTH_PW'] == "TestPW")
     {
-      $sUsername = $_SERVER['PHP_AUTH_USER'];
-      $sPassword = hash('sha512', $_SERVER['PHP_AUTH_PW']);
-      foreach($this->aUserList as $oUser)
-      {
-        if ($oUser->login($sUsername, $sPassword))
-        {
-          $this->m_oCurrentUser = $oUser;
-          $bSuccess = true;
-          break;
-        }
-      }
+      $bSuccess = true;
+    }
+    else
+    {
+      header('WWW-Authenticate: Basic realm="CcGitServer"');
+      header('HTTP/1.1 401 Authorization Required');
     }
     return $bSuccess;
   }

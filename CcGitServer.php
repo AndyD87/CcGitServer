@@ -303,7 +303,7 @@ class CcGitServer
         "[0-9a-f]{2}\/[0-9a-f]{38}|".
         "pack\/pack-[0-9a-f]{40}\.(pack|idx))".
         "|git-(upload|receive)-pack)/";
-    if( //CcGitServer::isGitHttpBackendAvailable() == false ||
+    if( CcGitServer::isGitHttpBackendAvailable() == false ||
         0 == preg_match($sRegEx, $this->getLinkConverter()->getCurrentPath()))
     {
       CcGitServer::writeDebugLog("GET regular");
