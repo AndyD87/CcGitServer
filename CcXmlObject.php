@@ -25,15 +25,45 @@
  * Description for class CcXmlObject
  */
 
+/**
+ * A basic xml object wich will store name attributes and subnodes.
+ */
 class CcXmlObject
 {
+  /**
+   * Name of this xml object
+   * @var string $sTag
+   */
   protected $sTag     = "";
-  protected $sId      = "";
+  /**
+   * Content as string
+   * @var string $sContent
+   */
   protected $sContent = "";
-  protected $aNodes   = array();
+  /**
+   * Array of containing xml nodes
+   * @var CcXmlObject[] $aNodes
+   */
+  protected $aNodes   = array(); //!< ignore warning
+  /**
+   * Array of attributes stored
+   * @var array $aAttributes
+   */
   protected $aAttributes = array();
+  /**
+   * Marker if this XmlObject is short tag.
+   * This is a short tag: &lt;tag /&gt;
+   * This is not a short tag: &lt;tag&gt;&lt;/tag&gt;
+   * @var string $bIsShort
+   */
   protected $bIsShort = false;
   
+  /**
+   * Create a basic xml node by name and fill with data if set.
+   * @param string $sTag: Name of new XmlObject
+   * @param boolean $bIsShortOpenedTag: true if it is an short tag
+   * @param string $sContent: inital content
+   */
   public function __construct($sTag, $bIsShortOpenedTag = true, $sContent = null)
   {
     $this->sTag = $sTag;
@@ -44,12 +74,17 @@ class CcXmlObject
     }
   }
   
+  /**
+   * Create a subnode if not already exists.
+   * If not existing, a new node will be generated and returned.
+   * If existing, the found node will be returned.
+   * A path like "subnode/subnode/node" is also allowed
+   * @param string $sName: name or path to node to search for.
+   * @return CcXmlObject|NULL
+   */
   public function createIfNotExists($sName)
   {
     $aPath = explode("/", $sName);
-    /**
-     * @var CcXmlObject
-     */
     $oCurrentNode = $this;
     for($i=0; $i<count($aPath); $i++)
     {
@@ -84,6 +119,12 @@ class CcXmlObject
     $this->aAttributes[$sName] = $sAttribute;
   }
   
+  /**
+   * Select an attribute and change its value.
+   * If not existing, create it.
+   * @param string $sName
+   * @param string $sAttribute
+   */
   public function setAttribute($sName, $sAttribute)
   {
     if(isset($this->aAttributes[$sName]))
@@ -96,16 +137,19 @@ class CcXmlObject
     }
   }
   
-  public function setId($sId)
-  {
-    $this->sId = $sId;
-  }
-  
+  /**
+   * Change name of this xml object
+   * @param string $sTag
+   */
   public function setTag($sTag)
   {
     $this->sTag = $sTag;
   }
   
+  /**
+   * Add a node to this object
+   * @param CcXmlObject $aNode: new Node to add
+   */
   public function addNode($aNode)
   {
     if($aNode != null)
@@ -115,6 +159,10 @@ class CcXmlObject
     }
   }
   
+  /**
+   * Overwrite or set current content of object.
+   * @param string $sContent
+   */
   public function setContent($sContent)
   {
     if($sContent != null || $sContent != "")
@@ -122,21 +170,38 @@ class CcXmlObject
     $this->sContent = $sContent;
   }
   
+  /**
+   * Append content to currently stored
+   * @param string $sContent
+   */
   public function addContent($sContent)
   {
     $this->sContent .= $sContent;
   }
   
+  /**
+   * Get currently stored content.
+   * @return string
+   */
   public function getContent()
   {
     return $this->sContent;
   }
   
+  /**
+   * Get name of this xml object
+   * @return string
+   */
   public function getTag()
   {
     return $this->sTag;
   }
   
+  /**
+   * Find an attribute by name.
+   * @param string $sName: Name of attribute to search for
+   * @return array|NULL Attribute as array or NULL if not found.
+   */
   public function getAttribute($sName)
   {
     if(count($this->aAttributes))
@@ -152,6 +217,12 @@ class CcXmlObject
     return null;
   }
   
+  /**
+   * Get Node by name.
+   * A path like "subnode/subnode/node" is also allowed
+   * @param string $sName: Name or path to search for
+   * @return CcXmlObject|NULL Found node or NULL if not
+   */
   public function getNode($sName)
   {
     $aPath = explode("/", $sName);
@@ -180,7 +251,7 @@ class CcXmlObject
   }
   
   /**
-   * 
+   * Get all stored nodes as array
    * @return CcXmlObject[]
    */
   public function getNodes()
@@ -188,6 +259,10 @@ class CcXmlObject
     return $this->aNodes;
   }
   
+  /**
+   * Remove an attribute by name
+   * @param string $sName
+   */
   public function removeAttribute($sName)
   {
     if(isset($this->aAttributes[$sName]))
@@ -196,6 +271,11 @@ class CcXmlObject
     }
   }
   
+  /**
+   * Check if an attribute by name stored
+   * @param string $sName
+   * @return boolean
+   */
   public function hasAttribute($sName)
   {
     if(count($this->aAttributes))
@@ -212,6 +292,13 @@ class CcXmlObject
     return false;
   }
   
+  /**
+   * Get the whole content of this xml object as string.
+   * This string can be extended to a more readable string.
+   * @param boolean $bIntend: true if string should become more readable
+   * @param number $iIntendLevel: Currently ignored, no level supported.
+   * @return string formated xml string
+   */
   public function getXml($bIntend = false, $iIntendLevel = 0)
   {
     $sReturn = "";
@@ -232,10 +319,6 @@ class CcXmlObject
             $sReturn .= "\"";
           }
         }
-      }
-      if($this->sId  != "")
-      {
-        $sReturn .= " id=\"".$this->sId."\"";
       }
       
       if($this->bIsShort == true)
@@ -274,6 +357,10 @@ class CcXmlObject
     return $sReturn;
   }
   
+  /**
+   * Get a string of this object
+   * @return string formated string from getXml()
+   */
   public function __toString()
   {
     return $this->getXml();

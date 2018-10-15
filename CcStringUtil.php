@@ -24,6 +24,10 @@
  *
  * Description for class CcStringUtil
  */
+
+/**
+ * @brief Various static methods to manipulate string. 
+ */
 class CcStringUtil
 {
   /**
@@ -33,7 +37,7 @@ class CcStringUtil
    * @param string $bCaseSensitive: if false, case of strings will be ignored
    * @return boolean true if string is starting with
    */
-  static public function startsWith ($haystack, $needle, $bCaseSensitive = true)
+  public static function startsWith ($haystack, $needle, $bCaseSensitive = true)
   {
     $length = strlen($needle);
     if ($length == 0)
@@ -53,7 +57,7 @@ class CcStringUtil
    * @param string $bCaseSensitive: if false, case of strings will be ignored. default true;
    * @return boolean true if string is ending with
    */
-  static public function endsWith ($haystack, $needle, $bCaseSensitive = true)
+  public static function endsWith ($haystack, $needle, $bCaseSensitive = true)
   {
     $length = strlen($needle);
     if ($length == 0)
@@ -77,7 +81,7 @@ class CcStringUtil
    * @param string $bCaseSensitive: if false, case of strings will be ignored. default true;
    * @return string shortened result
    */
-  static public function removeAllLeading($haystack, $needle, $bCaseSensitive = true)
+  public static function removeAllLeading($haystack, $needle, $bCaseSensitive = true)
   {
     while (CcStringUtil::startsWith($haystack, $needle))
     {
@@ -93,7 +97,7 @@ class CcStringUtil
    * @param string $bCaseSensitive: if false, case of strings will be ignored. default true;
    * @return string shortened result
    */
-  static public function removeAllEnding($haystack, $needle, $bCaseSensitive = true)
+  public static function removeAllEnding($haystack, $needle, $bCaseSensitive = true)
   {
     while (CcStringUtil::endsWith($haystack, $needle, $bCaseSensitive))
     {
@@ -109,7 +113,7 @@ class CcStringUtil
    * @param string $sPath
    * @return string Cleaned path
    */
-  static public function cleanPath($sPath)
+  public static function cleanPath($sPath)
   {
     $aPath = explode("/", $sPath);
     $aNewPath = array();

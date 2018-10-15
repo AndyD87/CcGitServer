@@ -31,7 +31,18 @@
  */
 interface IGitServerAuth
 {
+  /**
+   * Check if current User is admin
+   */
   public function authAdmin();
+  
+  /**
+   * Check if current User is allowed to access files
+   */
   public function authGet();
+  
+  /**
+   * Check if current User is allowed to modify files
+   */
   public function authDav();
 }

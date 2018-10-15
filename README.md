@@ -7,6 +7,8 @@ For example, a git repository with apache requires to setup *DAV* in it's http.c
 
 CcGitServer implements a very simplified DAV Server to communicate with git.
 
+At the moment, there is no ui to browse projects.
+
 ## Requirements
 
 Nevertheless some requirements are necessary:
@@ -92,7 +94,8 @@ This system is very rudimental, and mainly designed to run on internal networks.
 - Security features
     It is dangerous to run it on internet,
 - Avoid dependency from php-xml
-- More documentation
+- test locking, it is just working with .lock files
+- Simple html ui for browsing projects
 
 ## Contact
 

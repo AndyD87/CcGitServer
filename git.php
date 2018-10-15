@@ -36,6 +36,10 @@
  */
 require_once 'CcGitServer.php';
 
+/**
+ * Create common git server
+ * @var CcGitServer $oGitServer
+ */
 $oGitServer = new CcGitServer();
-
+// start server
 $oGitServer->exec();

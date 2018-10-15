@@ -26,8 +26,33 @@
  */
 require_once "IGitServerAuth.php";
 
+/**
+ * @brief Default User data storage for CcGitServer
+ */
 class CcGitServerAuthUser
 {
+  /**
+   * true if this user is administrator
+   * @var bool $bIsAdmin
+   */
+  public $bIsAdmin;
+  /**
+   * Name of this user
+   * @var string $sUsername
+   */
+  private $sUsername;
+  /**
+   * sha256 hash value of a password for this user.
+   * @var string $sPassword
+   */
+  private $sPassword;
+  
+  /**
+   * Setup all variables on creation time
+   * @param string $sUsername: Name of new user
+   * @param string $sPassword: Password of new user wich must be already hashed with sha256
+   * @param bool $bIsAdmin: set true to creat new admin user
+   */
   public function __construct($sUsername, $sPassword, $bIsAdmin)
   {
     $this->sUsername = $sUsername;
@@ -35,10 +60,13 @@ class CcGitServerAuthUser
     $this->bIsAdmin = $bIsAdmin;
   }
   
-  public $sUsername;
-  public $bIsAdmin;
-  private $sPassword;
-  
+  /**
+   * Try to login.
+   * Check if parameters are matching with stored
+   * @param string $sUsername: Name to compare with this user
+   * @param string $sPassword: Password to verify user, wich must be already hashed with sha256
+   * @return boolean true if login was succeded
+   */
   public function login($sUsername, $sPassword)
   {
     $bRet = true;
@@ -51,32 +79,39 @@ class CcGitServerAuthUser
   }
 }
 
+/**
+ * @brief Default Authentication manager for CcGitServer
+ */
 class CcGitServerAuth implements IGitServerAuth 
 {
   /**
    * Current user. It will be set by setupUser().
    * If no valid user was found this value will be set null
-   * @var CcGitServerAuthUser
+   * @var CcGitServerAuthUser $m_oCurrentUser
    */
   private $m_oCurrentUser = null;
   
   /**
    * List of Users
-   * @var CcGitServerAuthUser[]
+   * @var CcGitServerAuthUser[] $m_aUserList
    */
-  private $aUserList = null;
+  private $m_aUserList = null;
   
   /**
    * Default user setup for demonstration purpose
    */
   public function setupDefault()
   {
-    $this->aUserList[] = new CcGitServerAuthUser
+    $this->m_aUserList[] = new CcGitServerAuthUser
       ("admin", hash('sha256', "admin"), true);
-    $this->aUserList[] = new CcGitServerAuthUser
+    $this->m_aUserList[] = new CcGitServerAuthUser
       ("user", hash('sha256', "user"), false);
   }
   
+  /**
+   * {@inheritDoc}
+   * @see IGitServerAuth::authAdmin()
+   */
   public function authAdmin()
   {
     $bSuccess = false;
@@ -98,6 +133,10 @@ class CcGitServerAuth implements IGitServerAuth
     return $bSuccess;
   }
   
+  /**
+   * {@inheritDoc}
+   * @see IGitServerAuth::authGet()
+   */
   public function authGet()
   {
     // Default setup does not require auth for get
@@ -105,6 +144,10 @@ class CcGitServerAuth implements IGitServerAuth
     return $bSuccess;
   }
   
+  /**
+   * {@inheritDoc}
+   * @see IGitServerAuth::authDav()
+   */
   public function authDav()
   {
     $bSuccess = false;
@@ -127,7 +170,7 @@ class CcGitServerAuth implements IGitServerAuth
     {
       $sUsername = $_SERVER['PHP_AUTH_USER'];
       $sPassword = hash('sha512', $_SERVER['PHP_AUTH_PW']);
-      foreach($this->aUserList as $oUser)
+      foreach($this->m_aUserList as $oUser)
       {
         if ($oUser->login($sUsername, $sPassword))
         {

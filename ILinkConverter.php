@@ -80,7 +80,7 @@ interface ILinkConverter
    * This method will generate a http link to file from stored server like
    * Example:
    *  /var/www/html/index.php -> https://adirmeier.de/index.php
-   * @param string $sLink
+   * @param string $sPath
    * @return string|bool Path or false if invalid
    */
   public function convertPathToLink($sPath);

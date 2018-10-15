@@ -26,14 +26,26 @@
  */
 require_once 'CcXmlObject.php';
 
+/**
+ * Webdav response xml object for multistatus messages
+ * @author tsep
+ *
+ */
 class CcWebDavMultistatus extends CcXmlObject
 {
-
+  /**
+   * Default create multistatus structure wich 
+   * will later filled with responses
+   */
   function __construct ()
   {
     parent::__construct("D:multistatus");
   }
 
+  /**
+   * Add new response to multistatus
+   * @param CcWebDavResponse $oResponse
+   */
   function addResponse ($oResponse)
   {
     $this->addNode($oResponse);

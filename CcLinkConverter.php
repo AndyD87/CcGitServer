@@ -27,6 +27,11 @@
 require_once 'ILinkConverter.php';
 require_once 'CcStringUtil.php';
 
+/**
+ * Default link converter implementation.
+ * This implementation will setup directies and links to work
+ * direct match url path and local path without redirection.
+ */
 class CcLinkConverter implements ILinkConverter
 {
   private $sRootLink = false;
@@ -34,50 +39,82 @@ class CcLinkConverter implements ILinkConverter
   private $sCurrentPath = false;
   private $sCurrentLink = false;
   
-  function __construct ()
-  {
-  }
-  
+  /**
+   * Overwrite or set current stored root link
+   * @param string $sLink
+   */
   function setRootLink($sLink)
   {
     $this->sRootLink = $sLink;
   }
   
+  /**
+   * Overwrite or set current stored root path
+   * @param string $sPath
+   */
   function setRootPath($sPath)
   {
     $this->sRootPath = CcStringUtil::cleanPath($sPath);
   }
   
+  /**
+   * Overwrite or set current stored active path
+   * @param string $sPath
+   */
   function setCurrentPath($sPath)
   {
     $this->sCurrentPath = CcStringUtil::cleanPath($sPath);
   }
   
+  /**
+   * Overwrite or set current stored active link
+   * @param string $sLink
+   */
   function setCurrentLink($sLink)
   {
     $this->sCurrentLink = $sLink;
   }
   
+  /**
+   * {@inheritDoc}
+   * @see ILinkConverter::getRootLink()
+   */
   function getRootLink()
   {
     return $this->sRootLink;
   }
   
+  /**
+   * {@inheritDoc}
+   * @see ILinkConverter::getRootPath()
+   */
   function getRootPath()
   {
     return $this->sRootPath;
   }
   
+  /**
+   * {@inheritDoc}
+   * @see ILinkConverter::getCurrentPath()
+   */
   function getCurrentPath()
   {
     return $this->sCurrentPath;
   }
   
+  /**
+   * {@inheritDoc}
+   * @see ILinkConverter::getCurrentLink()
+   */
   function getCurrentLink()
   {
     return $this->sCurrentLink;
   }
   
+  /**
+   * {@inheritDoc}
+   * @see ILinkConverter::getRelativePath()
+   */
   function getRelativePath()
   {
     $sPath = $this->getCurrentPath();
@@ -149,6 +186,10 @@ class CcLinkConverter implements ILinkConverter
     return $this->isValid();
   }
   
+  /**
+   * {@inheritDoc}
+   * @see ILinkConverter::isValid()
+   */
   public function isValid()
   {
     $bRet = false;
@@ -192,7 +233,7 @@ class CcLinkConverter implements ILinkConverter
    * This method will generate a http link to file from stored server like
    * Example:
    *  /var/www/html/index.php -> https://adirmeier.de/index.php
-   * @param string $sLink
+   * @param string $sPath
    * @return string|bool Path or false if invalid
    */
   public function convertPathToLink($sPath)
@@ -211,9 +252,15 @@ class CcLinkConverter implements ILinkConverter
     return false;
   }
   
+  /**
+   * Check if a path is valid and do not point to an not allowed
+   * path
+   * @param string $sPath: string to check
+   */
   public function isPathValid($sPath)
   {
     $bRet = false;
+    $sPath = CcStringUtil::cleanPath($sPath);
     $sValidRegEx = "/^".preg_quote($this->getRootPath(),"/")."[\/.*]*.*\.git[\/.*]*/";
     if(preg_match($sValidRegEx, $sPath))
     {

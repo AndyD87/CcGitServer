@@ -26,9 +26,16 @@
  */
 require_once 'CcXmlObject.php';
 
+/**
+ * Webdav response xml object for inserting to multistatus messages
+ * @author tsep
+ *
+ */
 class CcWebDavResponse extends CcXmlObject
 {
-
+  /**
+   * Setup defualt response structure with http ok
+   */
   function __construct ()
   {
     parent::__construct("D:response");
@@ -37,13 +44,20 @@ class CcWebDavResponse extends CcXmlObject
     $this->addNode($oStatusNode);
   }
 
+  /**
+   * Set href link of Response
+   * @param string $sLink
+   */
   function setLink ($sLink)
   {
-    $oLinkNode = new CcXmlObject("D:href", false);
+    $oLinkNode = $this->createIfNotExists("D:href");
     $oLinkNode->setContent($sLink);
     $this->addNode($oLinkNode);
   }
   
+  /**
+   * Add exclusive write support to property 
+   */
   function addLockSupportedExclusiveWrite()
   {
     $oXmlElmenent = $this->createIfNotExists("D:propstat/D:prop/D:supportedlock");
@@ -63,6 +77,9 @@ class CcWebDavResponse extends CcXmlObject
     }
   }
   
+  /**
+   * Add shared write support to property
+   */
   function addLockSupportedSharedWrite()
   {
     $oXmlElmenent = $this->createIfNotExists("D:propstat/D:prop/D:supportedlock");
@@ -82,6 +99,9 @@ class CcWebDavResponse extends CcXmlObject
     }
   }
   
+  /**
+   * Mark property as collection(directory)
+   */
   function addCollectionProp()
   {
     $oXmlElmenent = $this->createIfNotExists("D:propstat/D:prop/lp1:resourcetype");
@@ -97,17 +117,28 @@ class CcWebDavResponse extends CcXmlObject
     }
   }
   
+  /**
+   * Mark property as file
+   */
   function addFileProp()
   {
     $this->createIfNotExists("D:propstat/D:prop/lp1:resourcetype");
   }
   
+  /**
+   * Set created time from file or directory
+   * @param string $sCreationDate date to set
+   */
   function setCreated($sCreationDate)
   {
     $oXmlElmenent = $this->createIfNotExists("D:propstat/D:prop/lp1:creationdate");
     $oXmlElmenent->setContent($sCreationDate);
   }
   
+  /**
+   * Set last modified time from file or directory
+   * @param string $sLastModiefied date to set
+   */
   function setLastModified($sLastModiefied)
   {
     $oXmlElmenent = $this->createIfNotExists("D:propstat/D:prop/lp1:getlastmodified");

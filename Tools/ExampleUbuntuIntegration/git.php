@@ -40,8 +40,15 @@ require_once 'CcGitServer.php';
 require_once 'CcLinkConverter.php';
 require_once 'IGitServerAuth.php';
 
+/**
+ * Example link converter wich will link urls form http://xx/git to http://xx/git/repositories
+ * and paths from /xx/git to /xx/git/../repositories
+ */
 class CustomLinkConverter extends CcLinkConverter
 {
+  /**
+   * Setup the custom converter
+   */
   public function __construct()
   {
     $sNewPath = dirname(__FILE__)."/../repositories";
@@ -57,11 +64,8 @@ class CustomLinkConverter extends CcLinkConverter
   }
   
   /**
-   * This method will generate a path to server stored file from http link
-   * Example:
-   *  https://adirmeier.de/index.php -> /var/www/html/index.php
-   * @param string $sLink
-   * @return string|bool Path or false if invalid
+   * {@inheritDoc}
+   * @see CcLinkConverter::convertLinkToPath()
    */
   public function convertLinkToPath($sLink)
   {
@@ -87,6 +91,10 @@ class CustomLinkConverter extends CcLinkConverter
     return false;
   }
   
+  /**
+   * {@inheritDoc}
+   * @see CcLinkConverter::convertPathToLink()
+   */
   public function convertPathToLink($sPath)
   {
     $oParsed = parse_url($sPath);
@@ -108,8 +116,16 @@ class CustomLinkConverter extends CcLinkConverter
   }
 }
 
+/**
+ * Custom user authenticator wich will create a sample TestUser with TestPW as password.
+ * This user is admin too.
+ */
 class CUserAuth implements IGitServerAuth
 {
+  /**
+   * Check if user is TestUser
+   * @return boolean true if user is verified
+   */
   private function checkUser()
   {
     $bSuccess = false;
@@ -133,22 +149,40 @@ class CUserAuth implements IGitServerAuth
     return $bSuccess;
   }
   
+  /**
+   * {@inheritDoc}
+   * @see IGitServerAuth::authAdmin()
+   */
   public function authAdmin()
   {
     return $this->checkUser();  
   }
   
+  /**
+   * {@inheritDoc}
+   * @see IGitServerAuth::authGet()
+   */
   public function authGet()
   {
     return $this->checkUser();
   }
   
+  /**
+   * {@inheritDoc}
+   * @see IGitServerAuth::authDav()
+   */
   public function authDav()
   {
     return $this->checkUser();
   }
 }
 
-$oGitServer = new CcGitServer();
-$oGitServer->setLinkConverter(new CustomLinkConverter());
-$oGitServer->exec();
+/**
+ * Create example server
+ * @var CcGitServer $oIntegratedGitServer
+ */
+$oIntegratedGitServer = new CcGitServer();
+$oIntegratedGitServer->setAuth(new CUserAuth());
+$oIntegratedGitServer->setLinkConverter(new CustomLinkConverter());
+// start server
+$oIntegratedGitServer->exec();

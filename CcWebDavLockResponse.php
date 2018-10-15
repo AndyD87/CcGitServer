@@ -26,10 +26,17 @@
  */
 require_once 'CcXmlObject.php';
 
+/**
+ * Webdav response xml object for lock messages
+ * @author tsep
+ *
+ */
 class CcWebDavLockResponse extends CcXmlObject
 {
-
-  function __construct ()
+  /**
+   * Setup default xml structure for response
+   */
+  public function __construct ()
   {
     parent::__construct("D:prop");
     $this->addAttribute("xmlns:D", "DAV:");
@@ -55,7 +62,11 @@ class CcWebDavLockResponse extends CcXmlObject
     $oTimeout->setContent("Second-600");
   }
 
-  function setUuid ($sUuid)
+  /**
+   * Insert unique id to response message
+   * @param string $sUuid
+   */
+  public function setUuid ($sUuid)
   {
     $oActiveLock = $this->createIfNotExists("D:lockdiscovery/D:activelock");
     $oLockToken = new CcXmlObject("D:locktoken");

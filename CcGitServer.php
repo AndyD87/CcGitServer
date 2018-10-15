@@ -34,34 +34,43 @@ class CcGitServer
 {
   /**
    * Enable/disable debug mode for generating debug output to logfile
-   * @var bool true for debug output
+   * 
+   * true for debug output
+   * @var bool $bDebug
    */
   private static $bDebug = true;
   
   /**
    * Will be set from constructor and describes if current environment is a webserver.
    * Indicator for this value is $_SERVER['REQUEST_METHOD']
-   * @var bool true if we are called from webserver.
+   * 
+   * true if we are called from webserver.
+   * @var bool $bIsWeb
    */
   private static $bIsWeb = false;
   
   /**
    * Link converter to match http link with local filesystem
-   * @var ILinkConverter
+   * @var ILinkConverter $oLinkConverter
    */
   private $oLinkConverter = null;
   /**
    * Authentication manager to check user rights for get, dav and admin
-   * @var IGitServerAuth
+   * @var IGitServerAuth $oAuth
    */
   private $oAuth = null;
   
   /**
    * Current running method like GET and PUT
-   * @var string
+   * @var string $sMethod
    */
   private $sMethod ="";
   
+  /**
+   * Create a CcGitServerObject
+   * It will search for web environment by checking $_SERVER['REQUEST_METHOD']
+   * wich is required for any request. 
+   */
   public function __construct()
   {
     if( is_array($_SERVER) &&
@@ -71,11 +80,21 @@ class CcGitServer
     }
   }
   
+  /**
+   * Set an external LinkConverter to support various directory structures.
+   * @param ILinkConverter $oLinkConverter
+   */
   public function setLinkConverter($oLinkConverter)
   {
     $this->oLinkConverter = $oLinkConverter;
   }
   
+  /**
+   * Get currently set LinkConverter.
+   * It will be used to get external set LinkConverter or to create
+   * the default LinkConverter if nothing was set.
+   * @return ILinkConverter
+   */
   public function getLinkConverter()
   {
     if($this->oLinkConverter == null)
@@ -86,11 +105,20 @@ class CcGitServer
     return $this->oLinkConverter;
   }
   
+  /**
+   * Set external user interface implementation to support an external user interface
+   * @param IGitServerAuth $oAuth
+   */
   public function setAuth($oAuth)
   {
     $this->oAuth = $oAuth;
   }
   
+  /**
+   * Get an external set user interface implemenation wich was previously set by @ref setAuth
+   * or create a default one if nothing was set before
+   * @return IGitServerAuth
+   */
   public function getAuth()
   {
     if($this->oAuth == null)
@@ -101,6 +129,9 @@ class CcGitServer
     return $this->oAuth;
   }
   
+  /**
+   * Execute CcGitServer application
+   */
   public function exec()
   {
     if(CcGitServer::$bIsWeb &&
@@ -155,49 +186,14 @@ class CcGitServer
     }
   }
   
-  public function checkAuth($bIsGet = false)
-  {
-    $bAuthSuccess = false;
-    $bAuthRequired = false;
-    if(isset($_GET["service"]) && $_GET["service"] == "git-receive-pack")
-    {
-      $bAuthRequired = true;
-    }
-    else if($bIsGet )
-    {
-      // Default allow get request
-      $bAuthSuccess = true;
-    }
-    else
-    {
-      $bAuthRequired = true;
-    }
-    if($bAuthRequired)
-    {
-      if(!isset($_SERVER['PHP_AUTH_USER']) ||
-          !isset($_SERVER['PHP_AUTH_PW']))
-      {
-        header('WWW-Authenticate: Basic realm="Git"');
-        header('HTTP/1.1 401 Authorization Required');
-        CcGitServer::writeDebugLog("Auth required\n");
-        //CcGitServer::writeDebugLog(CcStringUtil::getVarDump($_SERVER));
-      }
-      else
-      {
-        //! @todo Replace checkAuth with your own by overloading or
-        //!       Change user values here
-        $sUsername = "User";
-        $sPassword = "user";
-        if($_SERVER['PHP_AUTH_USER'] == $sUsername ||
-            $_SERVER['PHP_AUTH_PW'] == $sPassword)
-        {
-          $bAuthSuccess = true;
-        }
-      }
-    }
-    return $bAuthSuccess;
-  }
-  
+  /**
+   * Create a new repository.
+   * Rootpath from LinkConverter will be prepended to sPath.
+   * ".git" will be appended to $sPath if not already done.
+   * Subdirectories are supporte like "subdir/Project.git"
+   * @param string $sPath
+   * @return boolean true if creation succeeded
+   */
   public function createRepository($sPath)
   {
     $bSuccess = true;
@@ -430,11 +426,15 @@ class CcGitServer
       }
     }
     
-    $sDataRaw = file_get_contents('php://input');
-    
-    $oWebDav->exec($sDataRaw);
+    $oWebDav->exec();
   }
   
+  /**
+   * Execute local git in a specified Working directory
+   * @param string $sParam: Parameters as string
+   * @param string $sWorkingDir: Working dir where git gets executed in
+   * @return boolean true if git returned with 0
+   */
   public static function execGit($sParam, $sWorkingDir)
   {
     $sCurrentDir = getcwd();
@@ -453,11 +453,22 @@ class CcGitServer
     return $iReturn == 0;
   }
   
-  public static function setEnv ($Key, $Value, $Flag = FILE_APPEND)
+  /**
+   * Set a new or overwrite a System variable.
+   * This will be valid for this instance only.
+   * @param string $Key: Name of variable
+   * @param string $Value: Value to set
+   */
+  public static function setEnv ($Key, $Value)
   {
     putenv($Key . '=' . $Value . '');
   }
   
+  /**
+   * Write a message to debug log.
+   * This will only be done if CcGitServer::$bDebug is true
+   * @param string $Message
+   */
   public static function writeDebugLog ($Message)
   {
     if (CcGitServer::$bDebug)

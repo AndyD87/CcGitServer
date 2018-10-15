@@ -32,17 +32,17 @@ require_once "CcWebDavResponse.php";
 require_once "CcWebDavLockResponse.php";
 require_once 'CcLinkConverter.php';
 
-const ErrorUnknown = 1;
-const ErrorInvalidMethod = 2;
-const ErrorParsingInput = 3;
-const ErrorMethodNotMatchingInputData = 4;
-const ErrorUnknownInputData = 5;
+const ErrorUnknown = 1;       //!< Unknown Error
+const ErrorInvalidMethod = 2; //!< Invalid Method
+const ErrorParsingInput = 3;  //!< Error on parsing input
+const ErrorMethodNotMatchingInputData = 4; //!< Input method not matching with input data
+const ErrorUnknownInputData = 5;  //!< Error input data are not correct
 
-const PropAll = "D:allprop";
-const PropSupportedLock = "D:supportedlock";
-const PropRessourceType = "lp1:resourcetype";
-const PropCreationDate = "lp1:creationdate";
-const PropLastModified = "lp1:getlastmodified";
+const PropAll = "D:allprop";                    //!< xml tag for all properties in webdav
+const PropSupportedLock = "D:supportedlock";    //!< xml tag for lock support setting in webdav
+const PropRessourceType = "lp1:resourcetype";   //!< xml tag for ressource type in webdav
+const PropCreationDate = "lp1:creationdate";    //!< xml tag for creation date in webdav
+const PropLastModified = "lp1:getlastmodified"; //!< xml tag for last modified date in webdav
 
 
 /**
@@ -53,28 +53,42 @@ const PropLastModified = "lp1:getlastmodified";
 class CcWebDav
 {
   /**
-   * @var ILinkConverter
+   * @var ILinkConverter $oLinkConverter
    */
   private $oLinkConverter = null;
   
+  /**
+   * Currently running method from http request
+   * @var string $sMethod
+   */
   private $sMethod;
-  /**  Default set internal error to -1, it will be cleare on constructor */
+  
+  /**  
+   * Default set internal error to -1, it will be cleare on constructor
+   * @var int $iError
+   */
   private $iError = -1;
-  /**  Depth settings for propfineed, predefined as infinity */
+  /**  
+   * Depth settings for propfineed, predefined as infinity
+   * @var int $iDepth
+   */
   private $iDepth = -1;
 
   /**
-   * @var CcXmlObject
+   * Parsed incoming request data, it will be set to null if parsing failed or
+   * no data is given
+   * @var CcXmlObject $oRequest
    */
   private $oRequest = null;
   
-  private $sInput = "";
-  
   /**
-   * @var CcXmlObject
+   * @var CcXmlObject $oResponse
    */
   private $oResponse = null;
   
+  /**
+   * Nothing to set on construct
+   */
   public function __construct ()
   {
     $this->iError = 0;
@@ -103,11 +117,38 @@ class CcWebDav
     return $this->oLinkConverter;
   }
   
+  /**
+   * Get data from input stream
+   * @param bool $bChunked: if true a maximum of 100k will be read at once 
+   * @return string
+   */
+  public function getInpuData($bChunked)
+  {
+    if($bChunked)
+    {
+      // return a maximum of 100k
+      return file_get_contents('php://input', FALSE, NULL, 0, 102400);
+    }
+    else
+    {
+      return file_get_contents('php://input');
+    }
+  }
+  
+  /**
+   * Set depth for all prop
+   * @param int $iDepth
+   */
   public function setDepth ($iDepth)
   {
     $this->iDepth = $iDepth;
   }
 
+  /**
+   * Set next method to execute
+   * @param string $sMethod
+   * @return boolean false if method not supported
+   */
   public function setMethod ($sMethod)
   {
     switch ($sMethod)
@@ -129,6 +170,11 @@ class CcWebDav
     return $this->iError == 0;
   }
   
+  /**
+   * Set CcWebDav in an error state
+   * @param int $iError: error number to set
+   * @param string $sAddtionalMessage: additional message to output
+   */
   public function setError($iError, $sAddtionalMessage = "")
   {
     CcGitServer::writeDebugLog("Error received: " . $iError);
@@ -137,19 +183,31 @@ class CcWebDav
     $this->iError = $iError;
   }
   
+  /**
+   * Check if CcWebDav is in an error state
+   * @return boolean
+   */
   public function hasError()
   {
     return $this->iError != 0;
   }
   
+  /**
+   * Check if CcWebDav is not in an error state
+   * @return boolean
+   */
   public function isAllOk()
   {
     return !$this->hasError();
   }
 
-  public function exec ($sInputData = "")
+  /**
+   * Execute current setup
+   * @return boolean true if all succeeded and false if any error occured.
+   * 
+   */
+  public function exec()
   {
-    $this->sInput = $sInputData;
     if ($this->iError == 0)
     {
       CcGitServer::writeDebugLog("WebDav Execution");
@@ -157,8 +215,6 @@ class CcWebDav
       CcGitServer::writeDebugLog("BaseDir: " . $this->getLinkConverter()->getCurrentPath());
       CcGitServer::writeDebugLog("BaseUrl: " . $this->getLinkConverter()->getCurrentLink());
       CcGitServer::writeDebugLog("Depth:   " . $this->iDepth);
-      CcGitServer::writeDebugLog("InputData:");
-      CcGitServer::writeDebugLog($sInputData);
       CcGitServer::writeDebugLog("");
       $this->execMethod();
       
@@ -261,7 +317,25 @@ class CcWebDav
       $fp = fopen($this->getLinkConverter()->getCurrentPath(), "w");
       if($fp)
       {
-        if(fwrite($fp, $this->sInput) !== false)
+        $bDone = false;
+        $bSuccess = true;
+        while($bDone == false)
+        {
+          $sData = $this->getInpuData(true);
+          if(strlen($sData) > 0)
+          {
+            if(fwrite($fp, $sData)=== false)
+            {
+              $bSuccess = false;
+              $bDone = true;
+            }
+          }
+          else 
+          {
+            $bDone = true;
+          }
+        }
+        if($bSuccess)
         {
           fclose($fp);
           header("HTTP/1.1 201 Created");
@@ -285,7 +359,7 @@ class CcWebDav
   private function execLock()
   {
     $oParser = new CcXmlParser();
-    $this->oRequest = $oParser->parse($this->sInput);
+    $this->oRequest = $oParser->parse($this->getInpuData());
     if($this->oRequest->getTag() == "D:lockinfo")
     {
       if(is_file($this->getLinkConverter()->getCurrentPath().".lock") &&
@@ -370,7 +444,7 @@ class CcWebDav
   private function execPropfind()
   {
     $oParser = new CcXmlParser();
-    $this->oRequest = $oParser->parse($this->sInput);
+    $this->oRequest = $oParser->parse($this->getInpuData());
     $this->oResponse = new CcWebDavMultistatus();
     if($this->oRequest->getTag() == "D:propfind")
     {
