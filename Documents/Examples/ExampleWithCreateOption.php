@@ -20,18 +20,18 @@
 /**
  * @file
  * @brief This file is the main entry point for CcGitServer
- * 
+ *
  * This file can be called from webser with redirect (look at .htaccess file) or
  * from commandline:
- * 
+ *
  * Commandline options:
  *  - **create PathToNewProject**
  *    create Project at "PathToNewProject"
- * 
+ *
  * Example for creating a directory:
- * 
+ *
  *    php git.php create ExampleProject
- *    
+ *
  *    The command will generate a project named ExampleProject.git in current directory
  */
 require_once 'CcGitServer.php';
@@ -41,14 +41,28 @@ require_once 'CcGitServer.php';
  * @var CcGitServer $oGitServer
  */
 $oGitServer = new CcGitServer();
-// Check if path is a valid repository
 if($oGitServer->isRepository())
 {
   // start server
   $oGitServer->exec();
 }
+// Setup create
+else if($oGitServer->isValidRepositoryPath(true))
+{
+  if(isset($_GET["create"]))
+  {
+    $oGitServer->createCurrentRepository();
+  }
+  else
+  {
+    echo "Path not found<br />\n";
+    echo "<a href=\"".$oGitServer->getLinkConverter()->getCurrentLink()."?create\">";
+    echo "Create";
+    echo "</a>";
+  }
+}
 else
 {
   header('HTTP/1.0 404 Not Found');
-  echo "Repository not found";
+  echo "Path not found";
 }

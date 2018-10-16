@@ -261,7 +261,7 @@ class CcLinkConverter implements ILinkConverter
   {
     $bRet = false;
     $sPath = CcStringUtil::cleanPath($sPath);
-    $sValidRegEx = "/^".preg_quote($this->getRootPath(),"/")."[\/.*]*.*\.git[\/.*]*/";
+    $sValidRegEx = "/^".preg_quote($this->getRootPath(),"/")."\/*.*\.git[\/]*/";
     if(preg_match($sValidRegEx, $sPath))
     {
       $bRet = true;

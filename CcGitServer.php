@@ -130,6 +130,64 @@ class CcGitServer
   }
   
   /**
+   * Same check as in @ref isValidRepositoryPath, but it checks if
+   * repository is existing on filesystem too.
+   * 
+   * @param bool $bStrict: if true Path must be a repository not any subdir 
+   * @return bool
+   */
+  public function isRepository($bStrict = false)
+  {
+    $bRet = false;
+    if($this->isValidRepositoryPath($bStrict))
+    {
+      $oMatches = array();
+      $sRegEx = "/(\/.*\.git)(?=\/|$)/";
+      if(preg_match($sRegEx, $this->getLinkConverter()->getCurrentPath(), $oMatches))
+      {
+        $bRet = is_dir($oMatches[1]);
+      }
+    }
+    return $bRet;
+  }
+  
+  /**
+   * Check if path is valid repository path.
+   *
+   * If $bStrict is false, every path within directory is valid.
+   * For example:
+   *   Project.git/HEAD
+   *   Project.git/refs/info
+   *
+   * If $bStrict is true only repository path is valid
+   * For Example:
+   *   Project.git
+   *   Project.git/
+   *
+   * @param bool $bStrict: if true Path must be a repository not any subdir
+   * @return bool
+   */
+  public function isValidRepositoryPath($bStrict = false)
+  {
+    $bRet = false;
+    $sPath = $this->getLinkConverter()->getCurrentPath();
+    if($sPath)
+    {
+      $oMatches = array();
+      $sRegEx = "/(\/.*\.git)(?=\/|$)/";
+      if($bStrict)
+      {
+        $sRegEx = "/(\/.*\.git)(?=\/|$)$/";
+      }
+      if(preg_match($sRegEx, $sPath, $oMatches))
+      {
+        $bRet = true;
+      }
+    }
+    return $bRet;
+  }
+  
+  /**
    * Execute CcGitServer application
    */
   public function exec()
@@ -143,6 +201,7 @@ class CcGitServer
     else if(CcGitServer::$bIsWeb)
     {
       $this->sMethod = $_SERVER['REQUEST_METHOD'];
+      CcGitServer::writeDebugLog($this->sMethod);
       switch ($this->sMethod)
       {
         case "HEAD":
@@ -187,6 +246,17 @@ class CcGitServer
   }
   
   /**
+   * Create a repository on current stored path
+   */
+  public function createCurrentRepository()
+  {
+    if($this->isPathARepository())
+    {
+      $this->createRepository($this->getLinkConverter()->getCurrentPath());
+    }
+  }
+  
+  /**
    * Create a new repository.
    * Rootpath from LinkConverter will be prepended to sPath.
    * ".git" will be appended to $sPath if not already done.
@@ -199,6 +269,11 @@ class CcGitServer
     $bSuccess = true;
     if($this->getLinkConverter()->getRootPath())
     {
+      $sPath = CcStringUtil::cleanPath($sPath);
+      if(CcStringUtil::startsWith($sPath, $this->getLinkConverter()->getRootPath()))
+      {
+        $sPath = substr($sPath, strlen($this->getLinkConverter()->getRootPath()));
+      }
       $sPath = CcStringUtil::removeAllEnding($sPath, ".git");
       $sPath = $this->getLinkConverter()->getRootPath()."/".$sPath;
       $sPathGit = $sPath.".git";
@@ -212,19 +287,19 @@ class CcGitServer
       {
         if($bSuccess && mkdir($sPathGit, 0775, true) == false)
         {
-          CcGitServer::writeDebugLog("failed to create project directory");
+          echo "failed to create project directory\n";
           $bSuccess = false;
         }
         
         if($bSuccess && CcGitServer::execGit("init --bare", $sPathGit) == false)
         {
-          CcGitServer::writeDebugLog("failed to init");
+          echo "failed to init\n";
           $bSuccess = false;
         }
         
         if($bSuccess && CcGitServer::execGit("clone \"$sPathGit\"", dirname($sPathGit)) == false)
         {
-          CcGitServer::writeDebugLog("failed to clone");
+          echo "failed to clone\n";
           $bSuccess = false;
         }
         
@@ -233,7 +308,7 @@ class CcGitServer
           $oResult = file_put_contents($sPath."/README.md", "Init git", FILE_APPEND);
           if($oResult === false)
           {
-            CcGitServer::writeDebugLog("failed to write ".$sPath."/README.md");
+            echo "failed to write ".$sPath."/README.md\n";
             $bSuccess = false;
           }
         }
@@ -266,11 +341,11 @@ class CcGitServer
         {
           if(CcFilesystemUtil::RemoveDir($sPath, true))
           {
-            CcGitServer::writeDebugLog("Repository '$sPath' successfully created");
+            echo "Repository '$sPath' successfully created\n";
           }
           else
           {
-            CcGitServer::writeDebugLog("Failed to remove '$sPath'");
+            echo "Failed to remove '$sPath'\n";
           }
         }
         else
@@ -289,7 +364,7 @@ class CcGitServer
     else
     {
       $bSuccess = false;
-      CcGitServer::writeDebugLog("No root dir found");
+      echo "No root dir found\n";
     }
     return $bSuccess;
   }
@@ -306,7 +381,6 @@ class CcGitServer
     if( CcGitServer::isGitHttpBackendAvailable() == false ||
         0 == preg_match($sRegEx, $this->getLinkConverter()->getCurrentPath()))
     {
-      CcGitServer::writeDebugLog("GET regular");
       if(is_file($this->getLinkConverter()->getCurrentPath()))
       {
         echo file_get_contents($this->getLinkConverter()->getCurrentPath());
@@ -319,7 +393,6 @@ class CcGitServer
     }
     else
     {
-      CcGitServer::writeDebugLog("GET git-http-backend");
       $bWriteContent = true;
       if ($this->sMethod == "HEAD")
       {
@@ -395,13 +468,6 @@ class CcGitServer
         if ($bWriteContent && $Offset < strlen($stdout))
         {
           echo substr($stdout, $Offset);
-          // Save ressources by checking if log is realy required before generating
-          if (CcGitServer::$bDebug)
-            CcGitServer::writeDebugLog(substr($stdout, $Offset));
-        }
-        else
-        {
-          CcGitServer::writeDebugLog($stdout);
         }
       }
       else
@@ -440,13 +506,17 @@ class CcGitServer
     $sCurrentDir = getcwd();
     $aOutput = array();
     $iReturn = -1;
-    if( chdir($sWorkingDir))
+    if(!function_exists("exec"))
+    {
+      echo "exec disabled\n";
+    }
+    else if(chdir($sWorkingDir))
     {
       exec("git ". $sParam, $aOutput, $iReturn);
     }
     else
     {
-      CcGitServer::writeDebugLog("Direcotry not existing");
+      echo "Direcotry not existing\n";
     }
     
     chdir($sCurrentDir);
