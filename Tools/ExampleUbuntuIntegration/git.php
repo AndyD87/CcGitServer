@@ -36,6 +36,7 @@
  *
  *    The command will generate a project named ExampleProject.git in current directory
  */
+require_once 'CcHttp.php';
 require_once 'CcGitServer.php';
 require_once 'CcLinkConverter.php';
 require_once 'IGitServerAuth.php';
@@ -138,8 +139,7 @@ class CUserAuth implements IGitServerAuth
     }
     else
     {
-      header('WWW-Authenticate: Basic realm="CcGitServer"');
-      header('HTTP/1.1 401 Authorization Required');
+      CcHttp::errorAuthRequired();
     }
     return $bSuccess;
   }

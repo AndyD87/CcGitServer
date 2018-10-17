@@ -34,6 +34,7 @@
  *
  *    The command will generate a project named ExampleProject.git in current directory
  */
+require_once 'CcHttp.php';
 require_once 'CcGitServer.php';
 
 /**
@@ -63,6 +64,6 @@ else if($oGitServer->isValidRepositoryPath(true))
 }
 else
 {
-  header('HTTP/1.0 404 Not Found');
+  CcHttp::errorNotFound();
   echo "Path not found";
 }

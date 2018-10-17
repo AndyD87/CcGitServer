@@ -29,6 +29,7 @@ require_once "CcFilesystemUtil.php";
 require_once "CcWebDav.php";
 require_once "CcLinkConverter.php";
 require_once "CcGitServerAuth.php";
+require_once 'CcGitSmartServer.php';
 
 class CcGitServer
 {
@@ -38,7 +39,7 @@ class CcGitServer
    * true for debug output
    * @var bool $bDebug
    */
-  private static $bDebug = false;
+  private static $bDebug = true;
   
   /**
    * Will be set from constructor and describes if current environment is a webserver.
@@ -151,6 +152,22 @@ class CcGitServer
     return $bRet;
   }
   
+  public function getRepositoryPath($sPath="")
+  {
+    $sReturn = "";
+    $sRegEx = "/(\/.*\.git)(?=\/|$)/";
+    $oMatches = array();
+    if($sPath == "")
+    {
+      $sPath = $this->getLinkConverter()->getCurrentPath();
+    }
+    if(preg_match($sRegEx, $sPath, $oMatches))
+    {
+      $sReturn = $oMatches[1];
+    }
+    return $sReturn;
+  }
+  
   /**
    * Check if path is valid repository path.
    *
@@ -196,7 +213,7 @@ class CcGitServer
         $this->getLinkConverter()->isValid() == false)
     {
       $this->writeDebugLog("Links and Paths are not valid");
-      header("HTTP/1.1 406 Not Acceptable");
+      CcHttp::errorNotAcceptable();
     }
     else if(CcGitServer::$bIsWeb)
     {
@@ -378,7 +395,13 @@ class CcGitServer
         "[0-9a-f]{2}\/[0-9a-f]{38}|".
         "pack\/pack-[0-9a-f]{40}\.(pack|idx))".
         "|git-(upload|receive)-pack)/";
-    if( CcGitServer::isGitHttpBackendAvailable() == false ||
+    if(isset($_GET['service']))
+    {
+      $oSmartServer = new CcGitSmartServer();
+      $oSmartServer->setLinkConverter($this->getLinkConverter());
+      $oSmartServer->exec();
+    }
+    else if( CcGitServer::isGitHttpBackendAvailable() == false ||
         0 == preg_match($sRegEx, $this->getLinkConverter()->getCurrentPath()))
     {
       if(is_file($this->getLinkConverter()->getCurrentPath()))
@@ -388,7 +411,7 @@ class CcGitServer
       else
       {
         CcGitServer::writeDebugLog($this->getLinkConverter()->getCurrentPath());
-        header('HTTP/1.0 404 Not Found');
+        CcHttp::errorNotFound();
       }
     }
     else
@@ -425,7 +448,7 @@ class CcGitServer
       }
       else
       {
-        $stdout = shell_exec("cd \"$this->getLinkConverter()->getRootPath()\" & git http-backend");
+        $stdout = shell_exec("cd \"".$this->getLinkConverter()->getRootPath()."\" & git http-backend");
       }
       if (is_array($stdout))
       {
@@ -472,7 +495,7 @@ class CcGitServer
       }
       else
       {
-        header('HTTP/1.0 404 Not Found');
+        CcHttp::errorNotFound();
       }
     }
   }

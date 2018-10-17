@@ -24,6 +24,7 @@
  *
  * Description for class CcWebDav
  */
+require_once 'CcHttp.php';
 require_once "CcStringUtil.php";
 require_once "CcXmlParser.php";
 require_once "CcXmlObject.php";
@@ -243,7 +244,7 @@ class CcWebDav
         $this->execMove();
         break;
       default:
-        header("HTTP/1.1 406 Not Acceptable");
+        CcHttp::errorNotAcceptable();
         $this->setError(ErrorInvalidMethod, $this->sMethod);
     }
   }
@@ -262,32 +263,32 @@ class CcWebDav
         {
           if(rename($this->getLinkConverter()->getCurrentPath(),$sTargetPath))
           {
-            header("HTTP/1.1 200 Ok");
+            CcHttp::ok();
           }
           else 
           {
             CcGitServer::writeDebugLog("rename failed");
             CcGitServer::writeDebugLog("Move from: ".$this->getLinkConverter()->getCurrentPath());
             CcGitServer::writeDebugLog("       to: ".$sTargetPath);
-            header("HTTP/1.1 406 Not Acceptable");
+            CcHttp::errorNotAcceptable();
           }
         }
         else
         {
           CcGitServer::writeDebugLog("files not found or already existing");
-          header("HTTP/1.1 406 Not Acceptable");
+          CcHttp::errorNotAcceptable();
         }
       }
       else
       {
         CcGitServer::writeDebugLog("destination not found");
-        header("HTTP/1.1 406 Not Acceptable");
+        CcHttp::errorNotAcceptable();
       }
     }
     else 
     {
       CcGitServer::writeDebugLog("destination not found");
-      header("HTTP/1.1 406 Not Acceptable");
+      CcHttp::errorNotAcceptable();
     }
   }
   
@@ -297,7 +298,7 @@ class CcWebDav
       unlink($this->getLinkConverter()->getCurrentPath()) == false)
     {
       CcGitServer::writeDebugLog("[ERROR] is_file");
-      header("HTTP/1.1 406 Not Acceptable");
+      CcHttp::errorNotAcceptable();
     }
     else if(is_dir(dirname($this->getLinkConverter()->getCurrentPath())) ||
             mkdir(dirname($this->getLinkConverter()->getCurrentPath())))
@@ -317,12 +318,12 @@ class CcWebDav
         if($bSuccess)
         {
           fclose($fp);
-          header("HTTP/1.1 201 Created");
+          CcHttp::okCreated();
         }
         else
         {
           CcGitServer::writeDebugLog("[ERROR] fwrite");
-          header("HTTP/1.1 406 Not Acceptable");
+          CcHttp::errorNotAcceptable();
           fclose($fp);
           unlink($this->getLinkConverter()->getCurrentPath());
         }
@@ -330,7 +331,7 @@ class CcWebDav
       else
       {
         CcGitServer::writeDebugLog("[ERROR] fopen ". $this->getLinkConverter()->getCurrentPath());
-        header("HTTP/1.1 406 Not Acceptable");
+        CcHttp::errorNotAcceptable();
       }
     }
   }
@@ -344,7 +345,7 @@ class CcWebDav
       if(is_file($this->getLinkConverter()->getCurrentPath().".lock") &&
          !unlink($this->getLinkConverter()->getCurrentPath().".lock"))// @todo remove this line
       {
-        header("HTTP/1.1 406 Not Acceptable");
+        CcHttp::errorNotAcceptable();
       }
       else
       {
@@ -364,19 +365,19 @@ class CcWebDav
         }
         if(is_file($this->getLinkConverter()->getCurrentPath().".lock"))
         {
-          header("HTTP/1.1 200 Ok");
+          CcHttp::ok();
           $this->oResponse = new CcWebDavLockResponse();
           $this->oResponse->setUuid("opaquelocktoken:9cdd9e0a-ade0-485e-a38f-a70be8fa8ded");
         }
         else 
         {
-          header("HTTP/1.1 403 Forbidden");
+          CcHttp::errorAccessDenied();
         }
       }
     }
     else
     {
-      header("HTTP/1.1 403 Forbidden");
+      CcHttp::errorAccessDenied();
     }
   }
   
@@ -387,17 +388,17 @@ class CcWebDav
     {
       if(unlink($this->getLinkConverter()->getCurrentPath().".lock"))
       {
-        header("HTTP/1.1 200 Ok");
+        CcHttp::ok();
       }
       else
       {
         $bOk = false;
-        header("HTTP/1.1 403 Forbidden");
+        CcHttp::errorAccessDenied();
       }
     }
     else
     {
-      header("HTTP/1.1 200 Ok");
+      CcHttp::ok();
     }
     if($bOk)
     {
@@ -410,12 +411,12 @@ class CcWebDav
     if(is_dir($this->getLinkConverter()->getCurrentPath()) ||
         mkdir($this->getLinkConverter()->getCurrentPath()))
     {
-      header("HTTP/1.1 201 Created");
+      CcHttp::okCreated();
       CcGitServer::writeDebugLog("Directory created");
     }
     else
     {
-      header("HTTP/1.1 406 Not Acceptable");
+      CcHttp::errorNotAcceptable();
       CcGitServer::writeDebugLog("Failed to create directory: ". $this->getLinkConverter()->getCurrentPath());
     }
   }
@@ -431,7 +432,7 @@ class CcWebDav
       $this->oResponse = new CcWebDavMultistatus();
       if($this->oRequest->getTag() == "D:propfind")
       {
-        header("HTTP/1.1 207 Multi-Status");
+        CcHttp::okMultistatus();
         $oPathNode = $this->oRequest->getNode("D:prop");
         $bAllProp = false; // Default set all prop
         $aProperties = array();
@@ -552,6 +553,5 @@ class CcWebDav
   {
     return file_get_contents('php://input');
   }
-  
 }
 

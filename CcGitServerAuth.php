@@ -25,6 +25,7 @@
  * Description for class CcGitServerAuth
  */
 require_once "IGitServerAuth.php";
+require_once 'CcHttp.php';
 
 /**
  * @brief Default User data storage for CcGitServer
@@ -185,12 +186,11 @@ class CcGitServerAuth implements IGitServerAuth
   
   private function sendAuthRequired()
   {
-    header('WWW-Authenticate: Basic realm="CcGitServer"');
-    header('HTTP/1.1 401 Authorization Required');
+    CcHttp::errorAuthRequired();
   }
   
   private function sendAccessDenied()
   {
-    header('HTTP/1.1 403 Access Denied');
+    CcHttp::errorAccessDenied();
   }
 }
