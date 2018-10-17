@@ -155,20 +155,29 @@ class CUserAuth implements IGitServerAuth
   
   /**
    * {@inheritDoc}
-   * @see IGitServerAuth::authGet()
+   * @see IGitServerAuth::authPull()
    */
-  public function authGet()
+  public function authPull()
   {
     return $this->checkUser();
   }
   
   /**
    * {@inheritDoc}
-   * @see IGitServerAuth::authDav()
+   * @see IGitServerAuth::authPush()
    */
-  public function authDav()
+  public function authPush()
   {
     return $this->checkUser();
+  }
+  
+  public function getUsername()
+  {
+    if($this->checkUser())
+    {
+      return "TestUser";
+    }
+    return null;
   }
 }
 

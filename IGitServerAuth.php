@@ -39,10 +39,15 @@ interface IGitServerAuth
   /**
    * Check if current User is allowed to access files
    */
-  public function authGet();
+  public function authPull();
   
   /**
-   * Check if current User is allowed to modify files
+   * Check if current User is allowed to modifie and create files
    */
-  public function authDav();
+  public function authPush();
+  
+  /**
+   * Get name of current user or null 
+   */
+  public function getUsername();
 }

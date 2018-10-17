@@ -149,11 +149,9 @@ class CcWebDav
       case "PUT":
       case "MOVE":
       case "OPTIONS":
-        CcGitServer::writeDebugLog("method: $sMethod");
         $this->sMethod = $sMethod;
         break;
       default:
-        CcGitServer::writeDebugLog("[ERROR]unknown method: $sMethod");
         $this->iError = 1;
     }
     return $this->iError == 0;
@@ -166,7 +164,6 @@ class CcWebDav
    */
   public function setError($iError, $sAddtionalMessage = "")
   {
-    CcGitServer::writeDebugLog("Error received: " . $iError);
     if($sAddtionalMessage != "")
       CcGitServer::writeDebugLog("      Messasge: " . $sAddtionalMessage);
     $this->iError = $iError;
@@ -199,20 +196,11 @@ class CcWebDav
   {
     if ($this->iError == 0)
     {
-      CcGitServer::writeDebugLog("WebDav Execution");
-      CcGitServer::writeDebugLog("Method:  " . $this->sMethod);
-      CcGitServer::writeDebugLog("BaseDir: " . $this->getLinkConverter()->getCurrentPath());
-      CcGitServer::writeDebugLog("BaseUrl: " . $this->getLinkConverter()->getCurrentLink());
-      CcGitServer::writeDebugLog("Depth:   " . $this->iDepth);
-      CcGitServer::writeDebugLog("");
       $this->execMethod();
       
       if($this->oResponse)
       {
-        CcGitServer::writeDebugLog("");
-        CcGitServer::writeDebugLog("Repsonse:");
         echo $this->oResponse->getXml();
-        CcGitServer::writeDebugLog($this->oResponse->getXml(true));
       }        
     }
     return $this->iError == 0;
@@ -427,7 +415,6 @@ class CcWebDav
     $sInputData = CcWebDav::getInputData();
     if($sInputData)
     {
-      CcGitServer::writeDebugLog($sInputData);
       $this->oRequest = $oParser->parse($sInputData);
       $this->oResponse = new CcWebDavMultistatus();
       if($this->oRequest->getTag() == "D:propfind")
@@ -545,11 +532,10 @@ class CcWebDav
   }
   
   /**
-   * Get data from input stream
-   * @param bool $bChunked: if true a maximum of 100k will be read at once
+   * Get all data from input stream
    * @return string
    */
-  private static function getInputData()
+  public static function getInputData()
   {
     return file_get_contents('php://input');
   }

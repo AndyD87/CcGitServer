@@ -29,7 +29,7 @@ require_once "CcFilesystemUtil.php";
 require_once "CcWebDav.php";
 require_once "CcLinkConverter.php";
 require_once "CcGitServerAuth.php";
-require_once 'CcGitSmartServer.php';
+require_once 'CcProcess.php';
 
 class CcGitServer
 {
@@ -39,7 +39,7 @@ class CcGitServer
    * true for debug output
    * @var bool $bDebug
    */
-  private static $bDebug = true;
+  private static $bDebug = false;
   
   /**
    * Will be set from constructor and describes if current environment is a webserver.
@@ -68,6 +68,13 @@ class CcGitServer
   private $sMethod ="";
   
   /**
+   * Path to git-http-backend executable
+   * Please use setHttpBackendExecutable to replace it.
+   * @var string $sHttpBackendExe
+   */
+  private $sHttpBackendExe = "git-http-backend";
+  
+  /**
    * Create a CcGitServerObject
    * It will search for web environment by checking $_SERVER['REQUEST_METHOD']
    * wich is required for any request. 
@@ -79,6 +86,15 @@ class CcGitServer
     {
       CcGitServer::$bIsWeb = true;
     }
+    // execute git-core/git-http-backend
+    if (is_file("/usr/lib/git-core/git-http-backend"))
+    {
+      $this->sHttpBackendExe = "/usr/lib/git-core/git-http-backend";
+    }
+    else if(is_file("/usr/libexec/git-core/git-http-backend"))
+    {
+      $this->sHttpBackendExe = "/usr/libexec/git-core/git-http-backend";
+    }
   }
   
   /**
@@ -88,6 +104,25 @@ class CcGitServer
   public function setLinkConverter($oLinkConverter)
   {
     $this->oLinkConverter = $oLinkConverter;
+  }
+  
+  /**
+   * Set external user interface implementation to support an external user interface
+   * @param IGitServerAuth $oAuth
+   */
+  public function setAuth($oAuth)
+  {
+    $this->oAuth = $oAuth;
+  }
+  
+  /**
+   * Replace current sotred git-http-backend executable with
+   * an other one
+   * @param string $sPath: Path to Executable
+   */
+  public function setHttpBackendExecutable($sPath)
+  {
+    $this->sHttpBackendExe = $sPath;
   }
   
   /**
@@ -107,15 +142,6 @@ class CcGitServer
   }
   
   /**
-   * Set external user interface implementation to support an external user interface
-   * @param IGitServerAuth $oAuth
-   */
-  public function setAuth($oAuth)
-  {
-    $this->oAuth = $oAuth;
-  }
-  
-  /**
    * Get an external set user interface implemenation wich was previously set by @ref setAuth
    * or create a default one if nothing was set before
    * @return IGitServerAuth
@@ -128,6 +154,45 @@ class CcGitServer
       $this->oAuth->setupDefault();
     }
     return $this->oAuth;
+  }
+  
+  /**
+   * Check if current User is admin
+   */
+  public function authAdmin()
+  {
+    $bRet = $this->getAuth()->authAdmin();
+    if($bRet)
+    {
+      $this->setEnvUser();
+    }
+    return $bRet;
+  }
+  
+  /**
+   * Check if current User is allowed to pull
+   */
+  public function authPull()
+  {
+    $bRet = $this->getAuth()->authPull();
+    if($bRet)
+    {
+      $this->setEnvUser();
+    }
+    return $bRet;
+  }
+  
+  /**
+   * Check if current User is allowed to modifie and create files
+   */
+  public function authPush()
+  {
+    $bRet = $this->getAuth()->authPush();
+    if($bRet)
+    {
+      $this->setEnvUser();
+    }
+    return $bRet;
   }
   
   /**
@@ -152,20 +217,33 @@ class CcGitServer
     return $bRet;
   }
   
-  public function getRepositoryPath($sPath="")
+  /**
+   * Extract path to Repository from current path
+   * @return string Path to repository or "" if not found.
+   */
+  public function getRepositoryPath()
   {
     $sReturn = "";
     $sRegEx = "/(\/.*\.git)(?=\/|$)/";
     $oMatches = array();
-    if($sPath == "")
-    {
-      $sPath = $this->getLinkConverter()->getCurrentPath();
-    }
-    if(preg_match($sRegEx, $sPath, $oMatches))
+    if(preg_match($sRegEx, $this->getLinkConverter()->getCurrentPath(), $oMatches))
     {
       $sReturn = $oMatches[1];
     }
     return $sReturn;
+  }
+  
+  /**
+   * Path to file or directory relative to repository directory
+   * @return string Path to repository or "" if not found.
+   */
+  public function getFilePathInRepository()
+  {
+    if(CcStringUtil::startsWith($this->getLinkConverter()->getCurrentPath(), $this->getRepositoryPath()))
+    {
+      return substr($this->getLinkConverter()->getCurrentPath(), strlen($this->getRepositoryPath()));
+    }
+    echo null;
   }
   
   /**
@@ -212,7 +290,6 @@ class CcGitServer
     if(CcGitServer::$bIsWeb &&
         $this->getLinkConverter()->isValid() == false)
     {
-      $this->writeDebugLog("Links and Paths are not valid");
       CcHttp::errorNotAcceptable();
     }
     else if(CcGitServer::$bIsWeb)
@@ -223,14 +300,38 @@ class CcGitServer
       {
         case "HEAD":
         case "GET":
-          if($this->getAuth()->authGet())
+          if(isset($_GET["service"]) && $_GET["service"] == "git-upload-pack")
           {
-            $this->execGet();
+            CcGitServer::writeDebugLog("upload");
+            if($this->authPull())
+            {
+              $this->execHttp();
+            }
+          }
+          else if(isset($_GET["service"]) && $_GET["service"] == "git-receive-pack")
+          {
+            CcGitServer::writeDebugLog("receive");
+            if($this->authPush())
+            {
+              $this->execHttp();
+            }
+          }
+          else if($this->authPull())
+          {
+            CcGitServer::writeDebugLog("http");
+            $this->execHttp();
+          }
+          break;
+        case "POST":
+          if($this->authPull())
+          {
+            CcGitServer::writeDebugLog("post");
+            $this->execHttp();
           }
           break;
         default:
           // @todo check for repository create with admin privilegues
-          if($this->getAuth()->authDav())
+          if($this->authPush())
           {
             $this->execWebDav();
           }
@@ -297,7 +398,7 @@ class CcGitServer
       if( is_dir($sPathGit) || is_file($sPathGit) ||
           is_dir($sPath) || is_file($sPath))
       {
-        CcGitServer::writeDebugLog("project already exists");
+        echo "project already exists";
         $bSuccess = false;
       }
       else
@@ -386,7 +487,7 @@ class CcGitServer
     return $bSuccess;
   }
   
-  private function execGet()
+  private function execHttp()
   {
     $sRegEx = "/.*\/(HEAD|".
         "info\/refs|".
@@ -395,13 +496,7 @@ class CcGitServer
         "[0-9a-f]{2}\/[0-9a-f]{38}|".
         "pack\/pack-[0-9a-f]{40}\.(pack|idx))".
         "|git-(upload|receive)-pack)/";
-    if(isset($_GET['service']))
-    {
-      $oSmartServer = new CcGitSmartServer();
-      $oSmartServer->setLinkConverter($this->getLinkConverter());
-      $oSmartServer->exec();
-    }
-    else if( CcGitServer::isGitHttpBackendAvailable() == false ||
+    if( $this->isGitHttpBackendAvailable() == false ||
         0 == preg_match($sRegEx, $this->getLinkConverter()->getCurrentPath()))
     {
       if(is_file($this->getLinkConverter()->getCurrentPath()))
@@ -410,21 +505,18 @@ class CcGitServer
       }
       else
       {
-        CcGitServer::writeDebugLog($this->getLinkConverter()->getCurrentPath());
         CcHttp::errorNotFound();
       }
     }
     else
     {
-      $bWriteContent = true;
-      if ($this->sMethod == "HEAD")
-      {
-        $bWriteContent = false;
-      }
       // Prepare Path to project by trim slashes
+      if(isset($_SERVER["REDIRECT_QUERY_STRING"]))
+      {
+        $_SERVER["QUERY_STRING"] = $_SERVER["REDIRECT_QUERY_STRING"];
+      }
       $_SERVER["DOCUMENT_ROOT"] = $this->getLinkConverter()->getRootPath();
       $_SERVER["CONTEXT_DOCUMENT_ROOT"] = $this->getLinkConverter()->getRootPath();
-      $_SERVER["QUERY_STRING"] = $this->getLinkConverter()->getRelativePath();
       // Copy server data to environment
       if (is_array($_SERVER))
       {
@@ -435,67 +527,68 @@ class CcGitServer
       }
       
       // Setup git-http-backend paths
-      CcGitServer::setEnv("GIT_PROJECT_ROOT", $this->getLinkConverter()->getRootPath());
+      CcGitServer::setEnv("GIT_PROJECT_ROOT", $this->getRepositoryPath());
       CcGitServer::setEnv("GIT_HTTP_EXPORT_ALL", "");
-      CcGitServer::setEnv("PATH_INFO", $this->getLinkConverter()->getRelativePath());
+      CcGitServer::setEnv("PATH_INFO", $this->getFilePathInRepository());
       
-      // execute git-core/git-http-backend
-      $stdout = "";
-      if (is_file("/usr/lib/git-core/git-http-backend"))
+      // Turn off output buffering
+      ini_set('output_buffering', 'off');
+      // Turn off PHP output compression
+      ini_set('zlib.output_compression', false);
+      //Flush (send) the output buffer and turn off output buffering
+      //ob_end_flush();
+      while (@ob_end_flush());
+      // Implicitly flush the buffer(s)
+      ini_set('implicit_flush', true);
+      ob_implicit_flush(true);
+      
+      // init values
+      $sLine = "";
+      
+      $oProc = new CcProcess($this->sHttpBackendExe);
+      $oProc->setWorkingDir($this->getRepositoryPath());
+      $oProc->exec();
+      if($this->sMethod == "POST")
       {
-        $stdout = shell_exec(
-            "cd \"".$this->getLinkConverter()->getRootPath()."\" & /usr/lib/git-core/git-http-backend");
+        $oProc->write(CcWebDav::getInputData());
+        $oProc->closeWrite();
       }
-      else
+      while($sLine = $oProc->readLine())
       {
-        $stdout = shell_exec("cd \"".$this->getLinkConverter()->getRootPath()."\" & git http-backend");
-      }
-      if (is_array($stdout))
-      {
-        $stdout = implode("\n", $stdout);
-      }
-      $Offset = 0;
-      $lines = CcGitServer::parseHeader($stdout, $Offset);
-      if (is_array($lines) && count($lines) > 0)
-      {
-        $lineCount = count($lines);
-        CcGitServer::writeDebugLog("ROOT: " . getenv("GIT_PROJECT_ROOT"));
-        CcGitServer::writeDebugLog("PATH: " . getenv("PATH_INFO"));
-        CcGitServer::writeDebugLog("Offset: $Offset");
-        CcGitServer::writeDebugLog("Length: " . (strlen($stdout) - $Offset));
-        CcGitServer::writeDebugLog("Header-Lines: " . $lineCount);
-        
-        for ($i = 0; $i < $lineCount; $i ++)
+        if("" == trim($sLine))
         {
-          $line = $lines[$i];
-          if (CcStringUtil::startsWith($line, "Content-Type: "))
-          {
-            header($line);
-            $line = substr($line, strlen("Content-Type: "));
-          }
-          else if (CcStringUtil::startsWith($line, "Status: "))
-          {
-            $line = substr($line, strlen("Status: "));
-            header("HTTP/1.0 $line");
-          }
-          else if ($line == "")
-          {
-            // Empty Line, end of header, do nothing.
-          }
-          else
-          {
-            header($line);
-          }
-          CcGitServer::writeDebugLog($line);
+          // Header end
+          break;
         }
-        if ($bWriteContent && $Offset < strlen($stdout))
+        else if (CcStringUtil::startsWith($sLine, "Status: "))
         {
-          echo substr($stdout, $Offset);
+          $sLine = substr($sLine, strlen("Status: "));
+          header("HTTP/1.1 $sLine");
+          CcGitServer::writeDebugLog("error");
+        }
+        else if ($sLine == "")
+        {
+          // Empty Line, end of header, do nothing.
+        }
+        else
+        {
+          header($sLine);
+          CcGitServer::writeDebugLog($sLine);
         }
       }
-      else
+      
+      $bIsRunning = true;
+      while($bIsRunning)
       {
-        CcHttp::errorNotFound();
+        $sData = $oProc->read(4);
+        if(!$sData)
+        {
+          $bIsRunning = false;
+        }
+        else
+        {
+          echo $sData.$oProc->readLine();
+        }
       }
     }
   }
@@ -574,59 +667,23 @@ class CcGitServer
     }
   }
   
-  private static function isGitHttpBackendAvailable()
+  private function isGitHttpBackendAvailable()
   {
     $bRet = false;
     
-    if(!function_exists("shell_exec"))
+    if(!function_exists("proc_open"))
     {
       $bRet = false;
     }
-    else if (is_file("/usr/lib/git-core/git-http-backend") ||
-        is_file("git-core/git-http-backend") ||
-        is_file("git-http-backend"))
+    else if (is_file($this->sHttpBackendExe))
     {
       $bRet = true;
     }
     return $bRet;
   }
   
-  private static function parseHeader ($Input, &$Offset)
+  private function setEnvUser()
   {
-    $bOffsetFound = false;
-    $uiCurrentOffest = 0;
-    $Offset = 0;
-    $sLine = "";
-    $aLines = array();
-    $uiLength = strlen($Input);
-    while ($bOffsetFound == false && $uiCurrentOffest < $uiLength)
-    {
-      if ($Input[$uiCurrentOffest] == "\n")
-      {
-        $aLines[] = $sLine;
-        $sLine = "";
-        if ($uiCurrentOffest + 1 < $uiLength && $Input[$uiCurrentOffest + 1] ==
-            "\n")
-        {
-          $bOffsetFound = true;
-          $uiCurrentOffest ++;
-        }
-        else if ($uiCurrentOffest + 2 < $uiLength &&
-            $Input[$uiCurrentOffest + 1] == "\r" &&
-            $Input[$uiCurrentOffest + 2] == "\n")
-        {
-          $bOffsetFound = true;
-          $uiCurrentOffest ++;
-          $uiCurrentOffest ++;
-        }
-      }
-      else
-      {
-        $sLine .= $Input[$uiCurrentOffest];
-      }
-      $uiCurrentOffest ++;
-    }
-    $Offset = $uiCurrentOffest;
-    return $aLines;
+    $_SERVER["REMOTE_USER"] = $this->getAuth()->getUsername();
   }
 }

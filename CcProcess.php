@@ -27,15 +27,46 @@
 require_once 'CcStringUtil.php';
 require_once 'CcFilesystemUtil.php';
 
+/**
+ * Execute an local application.
+ * This class can read/write to pipes and setup working direcotry.
+ */
 class CcProcess
 {
+  /**
+   * Path to executable
+   * @var string $sExecutable
+   */
   private $sExecutable;
-  private $sOutput;
-  private $sOutputError;
+  
+  /**
+   * Process handle, wich get set on exec
+   * @var resource $pProcess
+   */
   private $pProcess = null;
+  
+  /**
+   * Pipe descriptor list for reading and writing support
+   * @var string[][] $aDescriptors
+   */
   private $aDescriptors;
+  
+  /**
+   * Generated pipes from exec to read/write from/to.
+   * @var resource[] $aPipes
+   */
   private $aPipes;
   
+  /**
+   * Working directory to exectute in. If empty, current dir will be used
+   * @var string $sWorkingDir
+   */
+  private $sWorkingDir;
+  
+  /**
+   * Create a process object with target executable.
+   * @param string $sExecutable
+   */
   public function __construct($sExecutable)
   {
     $this->aDescriptors = array(
@@ -46,6 +77,9 @@ class CcProcess
     $this->sExecutable = $sExecutable;
   }
   
+  /**
+   * close all handles if required
+   */
   public function __destruct()
   {
     if($this->pProcess != null)
@@ -54,13 +88,32 @@ class CcProcess
     }
   }
   
+  /**
+   * Execute current setup
+   */
   public function exec()
-  {   
-    $this->pProcess = proc_open($this->sExecutable,
-        $this->aDescriptors, 
-        $this->aPipes);
+  {
+    $sCurrentDir = getcwd();
+    $bAllOk = function_exists("proc_open");
+    if($this->sWorkingDir)
+    {
+      $bAllOk = chdir($this->sWorkingDir);
+    }
+    if($bAllOk)
+    {
+      $this->pProcess = proc_open($this->sExecutable,
+          $this->aDescriptors,
+          $this->aPipes);
+    }
+    if($this->sWorkingDir)
+    {
+      $bAllOk = chdir($sCurrentDir);
+    }
   }
   
+  /**
+   * close process if not already done
+   */
   public function close()
   {
     if($this->pProcess != null)
@@ -70,11 +123,41 @@ class CcProcess
     }
   }
   
+  /**
+   * Close the stdin pipe of executable
+   */
+  public function closeWrite()
+  {
+    if($this->pProcess != null)
+    {
+      fclose($this->aPipes[0]);
+    }
+  }
+  
+  /**
+   * Working directory to exectute in. 
+   * If empty, current dir will be used.
+   * @param string $sWorkingDir: New working directory
+   */
+  public function setWorkingDir($sWorkingDir)
+  {
+    $this->sWorkingDir = $sWorkingDir;
+  }
+  
+  /**
+   * Read form executable stdout pipe
+   * @param number $iMaxLength: Maximum length of string to read
+   * @return string|false Read string or false on error
+   */
   public function read($iMaxLength = 10240)
   {
     return fread($this->aPipes[1], $iMaxLength);
   }
   
+  /**
+   * Read all data from stdout pipe
+   * @return string|false Read string or false on error
+   */
   public function readAll()
   {
     $sOutput = "";
@@ -88,4 +171,26 @@ class CcProcess
     } while($sRead && strlen($sRead) == 10240);
     return $sOutput;
   }
+  
+  /**
+   * 
+   * @param number $iMaxLength: Maximum length of line to read
+   * @return string
+   */
+  public function readLine($iMaxLength = 10240)
+  {
+    return fgets($this->aPipes[1], $iMaxLength);
+  }
+  
+  /**
+   * Write data to stdin of executable
+   * @param string $sData: Data to write to process
+   * @return number Number of bytes written
+   */
+  public function write($sData)
+  {
+    $iWritten = fwrite($this->aPipes[0], $sData);
+    return $iWritten;
+  }
+  
 }

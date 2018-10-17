@@ -63,11 +63,6 @@ interface ILinkConverter
   public function getCurrentPath();
   
   /**
-   * This method returns the difference between RootPath and CurrentPath
-   */
-  public function getRelativePath();
-  
-  /**
    * This method will generate a path to server stored file from http link
    * Example:
    *  https://adirmeier.de/index.php -> /var/www/html/index.php 

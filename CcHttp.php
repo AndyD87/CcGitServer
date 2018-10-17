@@ -27,8 +27,18 @@
 require_once 'CcStringUtil.php';
 require_once 'CcFilesystemUtil.php';
 
+/**
+ * Utility class for http protocol.
+ * For example write status to header 
+ */
 class CcHttp
 {
+  /**
+   * Write information to header
+   * @param string $sName: Name of variable to write to header, oder full string if
+   *                       if $sValue not used.
+   * @param string $sValue: Data for $sName if required or null
+   */
   public static function writeHeader($sName, $sValue=null)
   {
     if(function_exists("header"))
@@ -36,52 +46,75 @@ class CcHttp
       if($sValue != null)
       {
         header("$sName: $sValue");
-        CcGitServer::writeDebugLog("$sName: $sValue");
       }
       else
       {
         header("$sName");
-        CcGitServer::writeDebugLog("$sName");
       }
     }
   }
   
+  /**
+   * Set contenttype to header
+   * @param string $sType
+   */
   public static function setContentType($sType)
   {
     CcHttp::writeHeader("Content-Type", $sType);
   }
   
+  /**
+   * send HTTP 200 message
+   */
   public static function ok()
   {
     CcHttp::writeHeader("HTTP/1.1 200 Ok");
   }
   
+  /**
+   * send HTTP 201 message
+   */
   public static function okCreated()
   {
     CcHttp::writeHeader("HTTP/1.1 201 Created");
   }
   
+  /**
+   * send HTTP 207 message
+   */
   public static function okMultistatus()
   {
     CcHttp::writeHeader("HTTP/1.1 201 Multi Status");
   }
   
+  /**
+   * send HTTP 401 message
+   */
   public static function errorAuthRequired()
   {
     header('WWW-Authenticate: Basic realm="CcGitServer"');
     header('HTTP/1.1 401 Authorization Required');
   }
   
+  /**
+   * send HTTP 403 message
+   */
   public static function errorAccessDenied()
   {
     CcHttp::writeHeader("HTTP/1.1 403 Access Denied");
   }
   
+  /**
+   * send HTTP 404 message
+   */
   public static function errorNotFound()
   {
     CcHttp::writeHeader("HTTP/1.1 404 Not Found");
   }
   
+  /**
+   * send HTTP 406 message
+   */
   public static function errorNotAcceptable()
   {
     CcHttp::writeHeader("HTTP/1.1 406 Not Acceptable");

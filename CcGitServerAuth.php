@@ -78,6 +78,15 @@ class CcGitServerAuthUser
     }
     return $bRet;
   }
+  
+  /**
+   * Get name of this user
+   * @return string
+   */
+  public function getUsername()
+  {
+    return $this->sUsername;
+  }
 }
 
 /**
@@ -124,21 +133,21 @@ class CcGitServerAuth implements IGitServerAuth
       }
       else
       {
-        $this->sendAccessDenied();
+        CcHttp::errorAccessDenied();
       }
     }
     else
     {
-      $this->sendAuthRequired();
+      CcHttp::errorAuthRequired();
     }
     return $bSuccess;
   }
   
   /**
    * {@inheritDoc}
-   * @see IGitServerAuth::authGet()
+   * @see IGitServerAuth::authPull()
    */
-  public function authGet()
+  public function authPull()
   {
     // Default setup does not require auth for get
     $bSuccess = true;
@@ -147,9 +156,9 @@ class CcGitServerAuth implements IGitServerAuth
   
   /**
    * {@inheritDoc}
-   * @see IGitServerAuth::authDav()
+   * @see IGitServerAuth::authPush()
    */
-  public function authDav()
+  public function authPush()
   {
     $bSuccess = false;
     if($this->setupUser())
@@ -158,9 +167,22 @@ class CcGitServerAuth implements IGitServerAuth
     }
     else
     {
-      $this->sendAuthRequired();
+      CcHttp::errorAuthRequired();
     }
     return $bSuccess;
+  }
+  
+  /**
+   * {@inheritDoc}
+   * @see IGitServerAuth::getUsername()
+   */
+  public function getUsername()
+  {
+    if($this->m_oCurrentUser)
+    {
+      return $this->m_oCurrentUser->getUsername();
+    }
+    return null;
   }
   
   private function setupUser()
@@ -182,15 +204,5 @@ class CcGitServerAuth implements IGitServerAuth
       }
     }
     return $bSuccess;
-  }
-  
-  private function sendAuthRequired()
-  {
-    CcHttp::errorAuthRequired();
-  }
-  
-  private function sendAccessDenied()
-  {
-    CcHttp::errorAccessDenied();
   }
 }

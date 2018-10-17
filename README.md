@@ -1,34 +1,52 @@
 # PHP based git server
 
 Target of this git server for HTTP is to keep configuration and requirements as simple as possible.
+This server supports both: dumb and smart https.  
+For **smart http** git-http-backend is required and the ability to execute applications on webserver.
+For **dumb http**:
+ - for clone and fetching nothing is required.
+ - for *push* support, the webserver must be able to pass through PROPFIND, LOCK,... requests. 
 
 Some setups for git to publish repositories over HTTP requires a seperate webDAV module for *push* support.  
 For example, a git repository with apache requires to setup *DAV* in it's http.conf, wich makes the repositories not very portable.
+To avoid this configurations CcGitServer implements a very simplified DAV Server to communicate with git.
 
-CcGitServer implements a very simplified DAV Server to communicate with git.
+This makes it possible to keep files and folders outside of webserver directory.  
+Additionally, it is possible to connect with a separate user interface. 
 
-At the moment, there is no ui to browse projects.
+At the moment, there is no ui to browse projects, but is palaned.  
+It is currently working as background application.
 
 ## Requirements
 
 Nevertheless some requirements are necessary:
- - Webserver with rewrite support
-   - Apache2: a2enmod rewrite
- - php >= 5.0
- - php-xml
+- Webserver with rewrite support
+     - For example, Apache2: a2enmod rewrite
+- php >= 5.0
+- php-xml
  
 Recommended but not necessary
- - git with git-http-backend on server
+ - git with git-http-backend on server (required for **smart http**)
+ - php *proc_open* enabled
   
 ## Default Settings
 
+No auth required for clone or fetch.
 Default users for push:
  - admin:admin
  - user:user
  
+It is very important to change this valuess!
+ 
 ## Setup
 
-This project is designed to run without configuration in any directory in an webserver. Just the requirements as definied in [Requirements](.#Requirements)
+This project is designed to run without configuration in any directory in an webserver. Just the requirements as definied in [Requirements](.#Requirements) must be available.
+
+But it is recommended to change user data!
+
+The next example will demonstrate a simple setup.
+
+If a more complex setup is required, for example to integrate in a existing frameworkt, look at [Integration](.#Integration)
 
 ### Example for apache on Ubuntu:
 
@@ -65,8 +83,7 @@ First clone from repository
 
 ## Integration
 
-Other than in [Setup](.#Setup), the CcGitServer can be configured to run in more complex
-envirionments too.  
+Other than in [Setup](.#Setup), the CcGitServer can be configured to run in more complex envirionments too.  
 
 Some webpages already have an user control or have seperate data folders, they can integrate CcGitServer by confguring thier own interfaces.
 

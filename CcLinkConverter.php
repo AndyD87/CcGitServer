@@ -112,20 +112,6 @@ class CcLinkConverter implements ILinkConverter
   }
   
   /**
-   * {@inheritDoc}
-   * @see ILinkConverter::getRelativePath()
-   */
-  function getRelativePath()
-  {
-    $sPath = $this->getCurrentPath();
-    if(CcStringUtil::startsWith($sPath, $this->getRootPath()))
-    {
-      $sPath = substr($sPath, strlen($this->getRootPath()));
-    }
-    return $sPath;
-  }
-  
-  /**
    * @brief This will setup values wich are currently not set
    */
   function setupDefault()
