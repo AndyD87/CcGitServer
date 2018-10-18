@@ -24,6 +24,7 @@
  *
  * Description for class CcFilesystemUtil
  */
+namespace NGitServer;
 
 /**
  * @brief Varios static methods to manipulate the local filesystem

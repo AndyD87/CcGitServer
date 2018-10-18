@@ -24,6 +24,7 @@
  *
  * Description for class CcXmlObject
  */
+namespace NGitServer;
 
 /**
  * A basic xml object wich will store name attributes and subnodes.

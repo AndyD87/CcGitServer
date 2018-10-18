@@ -24,6 +24,8 @@
  *
  * Description for class CcWebDavResponse
  */
+namespace NGitServer;
+
 require_once 'CcXmlObject.php';
 
 /**

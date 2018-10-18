@@ -41,15 +41,20 @@ require_once 'CcGitServer.php';
  * Create common git server
  * @var CcGitServer $oGitServer
  */
-$oGitServer = new CcGitServer();
+$oGitServer = new NGitServer\CcGitServer();
 // Check if path is a valid repository
 if($oGitServer->isRepository())
 {
   // start server
   $oGitServer->exec();
 }
+else if(!$oGitServer->isWeb())
+{
+  // We are on cli, so start server too
+  $oGitServer->exec();
+}
 else
 {
-  CcHttp::errorNotFound();
+  NGitServer\CcHttp::errorNotFound();
   echo "Repository not found";
 }

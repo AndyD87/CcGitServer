@@ -24,6 +24,8 @@
  *
  * Description for class CcWebDav
  */
+namespace NGitServer;
+
 require_once 'CcHttp.php';
 require_once "CcStringUtil.php";
 require_once "CcXmlParser.php";

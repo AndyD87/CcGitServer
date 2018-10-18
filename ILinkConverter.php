@@ -24,6 +24,7 @@
  *
  * Description for class ILinkConverter
  */
+namespace NGitServer;
 
 /**
  * Interface to an object to manage paths and links in CcGitServer

@@ -24,6 +24,8 @@
  *
  * Description for class CcWebDavMultistatus
  */
+namespace NGitServer;
+
 require_once 'CcXmlObject.php';
 
 /**

@@ -45,7 +45,7 @@ require_once 'IGitServerAuth.php';
  * Example link converter wich will link urls form http://xx/git to http://xx/git/repositories
  * and paths from /xx/git to /xx/git/../repositories
  */
-class CustomLinkConverter extends CcLinkConverter
+class CustomLinkConverter extends NGitServer\CcLinkConverter
 {
   /**
    * Setup the custom converter
@@ -66,7 +66,7 @@ class CustomLinkConverter extends CcLinkConverter
   
   /**
    * {@inheritDoc}
-   * @see CcLinkConverter::convertLinkToPath()
+   * @see NGitServer\CcLinkConverter::convertLinkToPath()
    */
   public function convertLinkToPath($sLink)
   {
@@ -74,12 +74,12 @@ class CustomLinkConverter extends CcLinkConverter
     if(isset($oParsed['path']))
     {
       $sPath = $oParsed['path'];;
-      if(CcStringUtil::startsWith($sPath, "/git/repositories"))
+      if(NGitServer\CcStringUtil::startsWith($sPath, "/git/repositories"))
       {
         $sPath = substr($sPath, strlen("/git/repositories"));
       }
       $sPath = $this->getRootPath()."/".$sPath;
-      $sPath = CcStringUtil::cleanPath($sPath);
+      $sPath = NGitServer\CcStringUtil::cleanPath($sPath);
       if($this->isPathValid($sPath))
       {
         return $sPath;
@@ -94,23 +94,23 @@ class CustomLinkConverter extends CcLinkConverter
   
   /**
    * {@inheritDoc}
-   * @see CcLinkConverter::convertPathToLink()
+   * @see NGitServer\CcLinkConverter::convertPathToLink()
    */
   public function convertPathToLink($sPath)
   {
     $oParsed = parse_url($sPath);
     if(isset($oParsed['path']))
     {
-      $sPath = CcStringUtil::cleanPath($oParsed['path']);
-      if(CcStringUtil::startsWith($sPath, $this->getRootPath()))
+      $sPath = NGitServer\CcStringUtil::cleanPath($oParsed['path']);
+      if(NGitServer\CcStringUtil::startsWith($sPath, $this->getRootPath()))
       {
         $sPath = substr($sPath, strlen($this->getRootPath()));
       }
-      if(CcStringUtil::startsWith($sPath, "/repositories"))
+      if(NGitServer\CcStringUtil::startsWith($sPath, "/repositories"))
       {
         $sPath = substr($sPath, strlen("/repositories"));
       }
-      $sPath = CcStringUtil::removeAllLeading($sPath, "/");
+      $sPath = NGitServer\CcStringUtil::removeAllLeading($sPath, "/");
       return $this->getRootLink()."/".$sPath;
     }
     return false;
@@ -121,7 +121,7 @@ class CustomLinkConverter extends CcLinkConverter
  * Custom user authenticator wich will create a sample TestUser with TestPW as password.
  * This user is admin too.
  */
-class CUserAuth implements IGitServerAuth
+class CustomUserAuth implements NGitServer\IGitServerAuth
 {
   /**
    * Check if user is TestUser
@@ -139,14 +139,14 @@ class CUserAuth implements IGitServerAuth
     }
     else
     {
-      CcHttp::errorAuthRequired();
+      NGitServer\CcHttp::errorAuthRequired();
     }
     return $bSuccess;
   }
   
   /**
    * {@inheritDoc}
-   * @see IGitServerAuth::authAdmin()
+   * @see NGitServer\IGitServerAuth::authAdmin()
    */
   public function authAdmin()
   {
@@ -155,7 +155,7 @@ class CUserAuth implements IGitServerAuth
   
   /**
    * {@inheritDoc}
-   * @see IGitServerAuth::authPull()
+   * @see NGitServer\IGitServerAuth::authPull()
    */
   public function authPull()
   {
@@ -164,7 +164,7 @@ class CUserAuth implements IGitServerAuth
   
   /**
    * {@inheritDoc}
-   * @see IGitServerAuth::authPush()
+   * @see NGitServer\IGitServerAuth::authPush()
    */
   public function authPush()
   {
@@ -185,8 +185,8 @@ class CUserAuth implements IGitServerAuth
  * Create example server
  * @var CcGitServer $oIntegratedGitServer
  */
-$oIntegratedGitServer = new CcGitServer();
-$oIntegratedGitServer->setAuth(new CUserAuth());
+$oIntegratedGitServer = new NGitServer\CcGitServer();
+$oIntegratedGitServer->setAuth(new CustomUserAuth());
 $oIntegratedGitServer->setLinkConverter(new CustomLinkConverter());
 // start server
 $oIntegratedGitServer->exec();

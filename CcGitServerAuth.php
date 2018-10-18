@@ -24,6 +24,8 @@
  *
  * Description for class CcGitServerAuth
  */
+namespace NGitServer;
+
 require_once "IGitServerAuth.php";
 require_once 'CcHttp.php';
 

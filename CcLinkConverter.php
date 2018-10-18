@@ -24,6 +24,8 @@
  *
  * Description for class CcLinkConverter
  */
+namespace NGitServer;
+
 require_once 'ILinkConverter.php';
 require_once 'CcStringUtil.php';
 

@@ -24,6 +24,8 @@
  *
  * Description for class CcWebDavLockResponse
  */
+namespace NGitServer;
+
 require_once 'CcXmlObject.php';
 
 /**

@@ -24,6 +24,7 @@
  *
  * Description for class IGitServerAuth
  */
+namespace NGitServer;
 
 /**
  * Interface to manage User control

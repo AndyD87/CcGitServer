@@ -24,6 +24,9 @@
  *
  * Description for class CcGitServer
  */
+
+namespace NGitServer;
+
 require_once "CcStringUtil.php";
 require_once "CcFilesystemUtil.php";
 require_once "CcWebDav.php";
@@ -215,6 +218,15 @@ class CcGitServer
       }
     }
     return $bRet;
+  }
+  
+  /**
+   * Determine if current environment is a web environment
+   * @return bool
+   */
+  public function isWeb()
+  {
+    return CcGitServer::$bIsWeb;
   }
   
   /**

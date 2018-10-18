@@ -24,6 +24,7 @@
  *
  * Description for class CcXmlParser
  */
+namespace NGitServer;
 
 require_once "CcXmlObject.php";
 

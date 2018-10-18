@@ -24,6 +24,8 @@
  *
  * Description for class CcHttp
  */
+namespace NGitServer;
+
 require_once 'CcStringUtil.php';
 require_once 'CcFilesystemUtil.php';
 

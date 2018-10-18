@@ -24,6 +24,7 @@
  *
  * Description for class CcStringUtil
  */
+namespace NGitServer;
 
 /**
  * @brief Various static methods to manipulate string. 
