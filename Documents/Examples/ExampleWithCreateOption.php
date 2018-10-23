@@ -41,7 +41,7 @@ require_once 'CcGitServer.php';
  * Create common git server
  * @var CcGitServer $oGitServer
  */
-$oGitServer = new CcGitServer();
+$oGitServer = new \NGitServer\CcGitServer();
 if($oGitServer->isRepository())
 {
   // start server
@@ -64,6 +64,6 @@ else if($oGitServer->isValidRepositoryPath(true))
 }
 else
 {
-  CcHttp::errorNotFound();
+  \NGitServer\CcHttp::errorNotFound();
   echo "Path not found";
 }
