@@ -614,9 +614,10 @@ class CcGitServer
     if (function_exists('getallheaders'))
     {
       $oHeaderInfo = getallheaders();
-      if (isset($oHeaderInfo["Depth"]))
+      $oHeaderInfo = array_change_key_case($oHeaderInfo, CASE_LOWER);
+      if (isset($oHeaderInfo["depth"]))
       {
-        $oWebDav->setDepth($oHeaderInfo["Depth"]);
+        $oWebDav->setDepth($oHeaderInfo["depth"]);
       }
     }
     
