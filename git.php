@@ -46,12 +46,12 @@ $oGitServer = new NGitServer\CcGitServer();
 if($oGitServer->isRepository())
 {
   // start server
-  $oGitServer->exec();
+  $oGitServer->start();
 }
 else if(!$oGitServer->isWeb())
 {
   // We are on cli, so start server too
-  $oGitServer->exec();
+  $oGitServer->start();
 }
 else
 {

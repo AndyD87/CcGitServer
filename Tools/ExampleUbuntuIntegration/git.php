@@ -1,4 +1,6 @@
 <?php
+use NGitServer\CcStringUtil;
+
 /**
  * @copyright  Andreas Dirmeier (C) 2018
  *
@@ -37,7 +39,8 @@
  *    The command will generate a project named ExampleProject.git in current directory
  */
 require_once 'CcHttp.php';
-require_once 'CcGitServer.php';
+if(is_file('CcGitServer.php')) require_once 'CcGitServer.php';
+else if(is_file('../../CcGitServer.php')) require_once '../../CcGitServer.php';
 require_once 'CcLinkConverter.php';
 require_once 'IGitServerAuth.php';
 
@@ -74,12 +77,12 @@ class CustomLinkConverter extends NGitServer\CcLinkConverter
     if(isset($oParsed['path']))
     {
       $sPath = $oParsed['path'];;
-      if(NGitServer\CcStringUtil::startsWith($sPath, "/git/repositories"))
+      if(CcStringUtil::startsWith($sPath, "/git/repositories"))
       {
         $sPath = substr($sPath, strlen("/git/repositories"));
       }
       $sPath = $this->getRootPath()."/".$sPath;
-      $sPath = NGitServer\CcStringUtil::cleanPath($sPath);
+      $sPath = CcStringUtil::cleanPath($sPath);
       if($this->isPathValid($sPath))
       {
         return $sPath;
@@ -101,16 +104,16 @@ class CustomLinkConverter extends NGitServer\CcLinkConverter
     $oParsed = parse_url($sPath);
     if(isset($oParsed['path']))
     {
-      $sPath = NGitServer\CcStringUtil::cleanPath($oParsed['path']);
-      if(NGitServer\CcStringUtil::startsWith($sPath, $this->getRootPath()))
+      $sPath = CcStringUtil::cleanPath($oParsed['path']);
+      if(CcStringUtil::startsWith($sPath, $this->getRootPath()))
       {
         $sPath = substr($sPath, strlen($this->getRootPath()));
       }
-      if(NGitServer\CcStringUtil::startsWith($sPath, "/repositories"))
+      if(CcStringUtil::startsWith($sPath, "/repositories"))
       {
         $sPath = substr($sPath, strlen("/repositories"));
       }
-      $sPath = NGitServer\CcStringUtil::removeAllLeading($sPath, "/");
+      $sPath = CcStringUtil::removeAllLeading($sPath, "/");
       return $this->getRootLink()."/".$sPath;
     }
     return false;
@@ -189,4 +192,4 @@ $oIntegratedGitServer = new NGitServer\CcGitServer();
 $oIntegratedGitServer->setAuth(new CustomUserAuth());
 $oIntegratedGitServer->setLinkConverter(new CustomLinkConverter());
 // start server
-$oIntegratedGitServer->exec();
+$oIntegratedGitServer->start();

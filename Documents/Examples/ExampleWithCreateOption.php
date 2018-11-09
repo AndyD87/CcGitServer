@@ -45,7 +45,7 @@ $oGitServer = new \NGitServer\CcGitServer();
 if($oGitServer->isRepository())
 {
   // start server
-  $oGitServer->exec();
+  $oGitServer->start();
 }
 // Setup create
 else if($oGitServer->isValidRepositoryPath(true))

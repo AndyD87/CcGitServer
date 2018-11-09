@@ -66,6 +66,12 @@ class CcProcess
   private $sWorkingDir;
   
   /**
+   * Last state received from proc_get_status
+   * @var string[] $aStatus
+   */
+  private $aStatus;
+  
+  /**
    * Create a process object with target executable.
    * @param string $sExecutable
    */
@@ -76,6 +82,11 @@ class CcProcess
         1 => array("pipe", "w"),  // stdout
         2 => array("pipe", "w")   // stderr
     );
+    $this->aPipes = array(
+        0 => null,  // stdin
+        1 => null,  // stdout
+        2 => null   // stderr
+    );
     $this->sExecutable = $sExecutable;
   }
   
@@ -84,33 +95,42 @@ class CcProcess
    */
   public function __destruct()
   {
-    if($this->pProcess != null)
-    {
-      $this->close();
-    }
+    $this->close();
   }
   
   /**
    * Execute current setup
    */
-  public function exec()
+  public function start($sArgumentLine = null)
   {
     $sCurrentDir = getcwd();
-    $bAllOk = function_exists("proc_open");
-    if($this->sWorkingDir)
+    $sRun = $this->sExecutable;
+    if($sArgumentLine)
     {
-      $bAllOk = chdir($this->sWorkingDir);
+      $sRun .= " ".$sArgumentLine;
     }
+    $bAllOk = function_exists("proc_open");
+    if( $this->getWorkingDir() &&
+        is_dir($this->getWorkingDir()))
+    {
+      $bAllOk = chdir($this->getWorkingDir());
+    }
+    else
+    {
+      $bAllOk = false;
+    }
+    
     if($bAllOk)
     {
-      $this->pProcess = proc_open($this->sExecutable,
+      $this->pProcess = proc_open($sRun,
           $this->aDescriptors,
           $this->aPipes);
     }
-    if($this->sWorkingDir)
+    if($this->getWorkingDir())
     {
-      $bAllOk = chdir($sCurrentDir);
+      chdir($sCurrentDir);
     }
+    return $bAllOk;
   }
   
   /**
@@ -118,11 +138,17 @@ class CcProcess
    */
   public function close()
   {
+    for($i=0; $i < count($this->aPipes); $i++)
+    {
+      if($this->aPipes[$i]) fclose($this->aPipes[$i]);
+      $this->aPipes[$i] = null;
+    }
     if($this->pProcess != null)
     {
-      pclose($this->pProcess);
+      $i = proc_close($this->pProcess);
       $this->pProcess = null;
     }
+    return $this->getExitCode();
   }
   
   /**
@@ -132,7 +158,11 @@ class CcProcess
   {
     if($this->pProcess != null)
     {
-      fclose($this->aPipes[0]);
+      if($this->aPipes[0])
+      {
+        fclose($this->aPipes[0]);
+        $this->aPipes[0] = null;
+      }
     }
   }
   
@@ -157,6 +187,16 @@ class CcProcess
   }
   
   /**
+   * Read form executable stderror pipe
+   * @param number $iMaxLength: Maximum length of string to read
+   * @return string|false Read string or false on error
+   */
+  public function readError($iMaxLength = 10240)
+  {
+    return fread($this->aPipes[2], $iMaxLength);
+  }
+  
+  /**
    * Read all data from stdout pipe
    * @return string|false Read string or false on error
    */
@@ -170,7 +210,25 @@ class CcProcess
       {
         $sOutput .= $sRead;
       }
-    } while($sRead && strlen($sRead) == 10240);
+    } while($sRead);
+    return $sOutput;
+  }
+  
+  /**
+   * Read all data from stderror pipe
+   * @return string|false Read string or false on error
+   */
+  public function readAllError()
+  {
+    $sOutput = "";
+    do
+    {
+      $sRead = $this->readError(10240);
+      if($sRead)
+      {
+        $sOutput .= $sRead;
+      }
+    } while($sRead);
     return $sOutput;
   }
   
@@ -195,4 +253,48 @@ class CcProcess
     return $iWritten;
   }
   
+  public function isRunning()
+  {
+    if($this->pProcess)
+      $this->aStatus = proc_get_status($this->pProcess);
+    return $this->aStatus["running"];
+  }
+  
+  public function waitFinished()
+  {
+    while($this->isRunning());
+  }
+  
+  public function getExitCode()
+  {
+    return $this->aStatus["exitcode"];
+  }
+  
+  public function getWorkingDir()
+  {
+    return $this->sWorkingDir;
+  }
+  
+  /**
+   * Directly exeute a program if possible
+   * @param string $sProgram: Name of Program to execute
+   * @param string $sWorkingDir: Working directory if required
+   * @param string &$sData: Output data if required
+   */
+  public static function exec($sProgram, $sWorkingDir=null, &$sData=null)
+  {
+    $oProc = new CcProcess($sProgram);
+    if($sWorkingDir) $oProc->setWorkingDir($sWorkingDir);
+    $oProc->run();
+    if($sData != null)
+    {
+      $sData = "";
+      while($this->isRunning()) $sData .= $this->readAll();
+    }
+    else
+    {
+      $oProc->waitFinished();
+    }
+    return $oProc->getExitCode();
+  }
 }

@@ -254,11 +254,6 @@ class CcLinkConverter implements ILinkConverter
     {
       $bRet = true;
     }
-    else
-    {
-      CcGitServer::writeDebugLog("invalid path: ". $sPath);
-      CcGitServer::writeDebugLog($sValidRegEx);
-    }
     return $bRet;
   }
 }

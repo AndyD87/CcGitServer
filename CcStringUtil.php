@@ -158,4 +158,51 @@ class CcStringUtil
     return $sData;
   }
   
+  /**
+   * @brief Get Callstack printed to an variable
+   * @return string in vardump format
+   */
+  public static function getCallstack()
+  {
+    ob_start();
+    debug_print_backtrace();
+    $sData = ob_get_clean();
+    return $sData;
+  }
+  
+  public static function stripLines($sInput, $bTrim = false, $bKeepEmpty = false)
+  {
+    $aLines = explode("\n", $sInput);
+    if($bKeepEmpty || $bTrim)
+    {
+      $iNewList = 0;
+      for($i=0; $i<count($aLines); $i++)
+      {
+        if($bTrim)
+        {
+          $aLines[$i] = trim($aLines[$i]);
+        }
+        if($bKeepEmpty)
+        {
+          if($aLines[$i] != "")
+          {
+            $aLines[$iNewList] = $aLines[$i];
+            $iNewList++;
+          }
+        }
+      }
+    }
+    return $aLines;
+  }
+  
+  /**
+   * Add Quotes to a string wich does not already have
+   * @param string $sString
+   * @return string
+   */
+  public static function addQuotes($sString)
+  {
+    $sString = escapeshellarg($sString);
+    return $sString;
+  }
 }

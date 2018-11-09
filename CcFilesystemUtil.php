@@ -26,6 +26,8 @@
  */
 namespace NGitServer;
 
+require_once 'CcStringUtil.php';
+
 /**
  * @brief Varios static methods to manipulate the local filesystem
  */
@@ -72,5 +74,94 @@ class CcFilesystemUtil
       $bSuccess = false;
     }
     return $bSuccess;
+  }
+  
+  /**
+   * Get mimetype of a file.
+   * @param string $sFilePath
+   * @return string
+   */
+  public static function getMimeType($sFilePath)
+  {
+    if(CcStringUtil::endsWith($sFilePath, ".css"))
+    {
+      return "text/css";
+    }
+    else if(function_exists('mime_content_type')) 
+    {
+      return mime_content_type($sFilePath);
+    }
+    else
+    {
+      //@todo
+      return "";
+    }   
+  }
+  
+  /**
+   * Print a file to stdout in 10k chunks.
+   * @param string $sPath: path to file
+   * @return boolean true if printing was done successfully
+   */
+  public static function printFile($sPath)
+  {
+    $bRet = false;
+    $oFile = fopen($sPath, "r");
+    if($oFile)
+    {
+      while($oData = fread($oFile, 10240))
+      {
+        echo $oData;
+      }
+      fclose($oFile);
+      $bRet = true;
+    }
+    return $bRet;
+  }
+  
+  /**
+   * Get lastmodified date of a file in date() format.
+   * @param string $sPath: Path to file
+   * @param string $sFormat: Format for date as defined in @ref date
+   * @return string Formated output string or "" if any error occured
+   */
+  public static function getLastModifiedString($sPath, $sFormat)
+  {
+    $sReturn = "";
+    if(is_dir($sPath) ||
+        is_file($sPath))
+    {
+      $oFileModifiedTime = filemtime($sPath);
+      $sReturn = date($sFormat,$oFileModifiedTime);
+    }
+    return $sReturn;
+  }
+  
+  /**
+   * Get Size of file.
+   * On 64bit Systems, nothing special to do, return is same as @ref filesize.
+   * On 32bit systems, file larger than 4GB are not supported, so we have to query OS for correct value.
+   * @param string $sPath: Path to file
+   * @return number
+   */
+  public static function getFileSize($sPath)
+  {
+    if(PHP_INT_SIZE == 4)
+    {
+      if(substr(PHP_OS, 0, 3) == "WIN")
+      {
+        exec('for %I in ("'.$file.'") do @echo %~zI', $output);
+        $return = $output[0];
+      }
+      else
+      {
+        $return = trim(`stat -c%s $file`);
+      }
+    }
+    else 
+    {
+      $return = filesize($sPath);
+    }
+    return $return;
   }
 }

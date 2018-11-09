@@ -194,7 +194,7 @@ class CcWebDav
    * @return boolean true if all succeeded and false if any error occured.
    * 
    */
-  public function exec()
+  public function start()
   {
     if ($this->iError == 0)
     {
