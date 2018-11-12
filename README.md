@@ -1,34 +1,35 @@
 # PHP based git server
 
 Target of this git server for HTTP is to keep configuration and requirements as simple as possible.
-This server supports both: dumb and smart https.  
-For **smart http** git-http-backend is required and the ability to execute applications on webserver.
-For **dumb http**:
- - for clone and fetching nothing is required.
- - for *push* support, the webserver must be able to pass through PROPFIND, LOCK,... requests. 
+This server supports both: dumb and smart https. The used method will be automaticaly selected by checking
+the [Requirements](.#Requirements) on server.
 
-Some setups for git to publish repositories over HTTP requires a seperate webDAV module for *push* support.  
+Some setups for git, to publish repositories, over HTTP requires a seperate webDAV module for *push* support.  
 For example, a git repository with apache requires to setup *DAV* in it's http.conf, wich makes the repositories not very portable.
 To avoid this configurations CcGitServer implements a very simplified DAV Server to communicate with git.
 
 This makes it possible to keep files and folders outside of webserver directory.  
 Additionally, it is possible to connect with a separate user interface. 
 
-At the moment, there is no ui to browse projects, but is palaned.  
-It is currently working as background application.
+It is currently working as background application.  
+At the moment, there is no ui to browse projects, but is planed. You will see the progress on [Project Page](https://coolcow.de/projects/CcGitServer).
 
 ## Requirements
 
-Nevertheless some requirements are necessary:
+Nevertheless some requirements are **necessary**:
 - Webserver with rewrite support
      - For example, Apache2: a2enmod rewrite
 - php >= 5.0
-- php-xml
+
+For **smart http**:
+ - git-http-backend available on server
+ - *proc_open* enabled in php
  
-Recommended but not necessary
- - git with git-http-backend on server (required for **smart http**)
- - php *proc_open* enabled
-  
+For **dumb http**:
+ - php-xml
+ - for *clone* and fetching nothing is required.
+ - for *push* support, the webserver must be able to pass through PROPFIND, LOCK,... requests. 
+
 ## Default Settings
 
 No auth required for clone or fetch.
