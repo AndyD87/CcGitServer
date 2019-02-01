@@ -122,7 +122,7 @@ class CcFilesystemUtil
   /**
    * Get lastmodified date of a file in date() format.
    * @param string $sPath: Path to file
-   * @param string $sFormat: Format for date as defined in @ref date
+   * @param string $sFormat: Format for date as defined in date
    * @return string Formated output string or "" if any error occured
    */
   public static function getLastModifiedString($sPath, $sFormat)
@@ -139,7 +139,7 @@ class CcFilesystemUtil
   
   /**
    * Get Size of file.
-   * On 64bit Systems, nothing special to do, return is same as @ref filesize.
+   * On 64bit Systems, nothing special to do, return is same as filesize.
    * On 32bit systems, file larger than 4GB are not supported, so we have to query OS for correct value.
    * @param string $sPath: Path to file
    * @return number
@@ -150,18 +150,20 @@ class CcFilesystemUtil
     {
       if(substr(PHP_OS, 0, 3) == "WIN")
       {
-        exec('for %I in ("'.$file.'") do @echo %~zI', $output);
+        $output = array();
+        exec('for %I in ("'.$sPath.'") do @echo %~zI', $output);
         $return = $output[0];
       }
       else
       {
-        $return = trim(`stat -c%s $file`);
+        $return = trim(`stat -c%s "$sPath"`);
       }
     }
-    else 
+    else
     {
       $return = filesize($sPath);
     }
     return $return;
   }
+  
 }

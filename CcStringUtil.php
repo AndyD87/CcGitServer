@@ -170,6 +170,13 @@ class CcStringUtil
     return $sData;
   }
   
+  /**
+   * Strip lines and trim input if required. Empty lines can also be removed.
+   * @param string $sInput: String to split
+   * @param boolean $bTrim: Trim each list item.
+   * @param boolean $bKeepEmpty: Remove every empty list item.
+   * @return array of strings
+   */
   public static function stripLines($sInput, $bTrim = false, $bKeepEmpty = false)
   {
     $aLines = explode("\n", $sInput);

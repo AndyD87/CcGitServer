@@ -38,9 +38,6 @@ require_once 'CcProcess.php';
  */
 class CcGitApp extends CcProcess
 {
-  /** @var string $sResult */
-  private $sResult = "";
-  
   /**
    * Create a git executable and define it's target git directory
    * @param string $sBaseDir: String to directory to execute git in.
@@ -51,11 +48,23 @@ class CcGitApp extends CcProcess
     $this->setWorkingDir($sBaseDir);
   }
   
+  /**
+   * @brief Add a file to current branch
+   * @param string $sFileToAdd: Relative path to File to add. 
+   * @return number ExitCode of git
+   */
   public function add($sFileToAdd)
   {
     return $this->run("add \"$sFileToAdd\"");
   }
   
+  /**
+   * @brief Commit to branch and set username and mail for commit message.
+   * @param string $sMessage: Message wich is describing the changes. 
+   * @param string $sUser:    Name of User for commit message
+   * @param string $sMail:    Mail address of User for questions
+   * @return number ExitCode of git
+   */
   public function commit($sMessage, $sUser="coolcow.de", $sMail="server@coolcow.de")
   {
     $this->run("config user.name ".escapeshellarg($sUser));
@@ -63,14 +72,61 @@ class CcGitApp extends CcProcess
     return $this->run("commit -am ".escapeshellarg($sMessage));
   }
   
-  public function push($sLocalBranch, $sTarget, $sTargetBranch)
+  /**
+   * @brief Push branch to a remote repository
+   * 
+   * @param string $sTarget:        Url or path to push branch to.
+   * @param string $sTargetBranch:  Local and remote branch to commit.
+   * @param string $sUsername:      Optional Username if required
+   * @param string $sPassword:      Optional Password if required
+   * @return true if succeeded
+   */
+  public function push($sTarget, $sTargetBranch, $sUsername = null, $sPassword = null)
   {
-    if($sLocalBranch) $sLocalBranch = CcStringUtil::addQuotes($sLocalBranch);
-    if($sTarget) $sTarget = CcStringUtil::addQuotes($sTarget);
-    if($sTargetBranch) $sTargetBranch = CcStringUtil::addQuotes($sTargetBranch);
-    return $this->run("push $sLocalBranch $sTarget $sTargetBranch");
+    $bSuccess = true;
+    $sNewTarget = $sTarget;
+    if($sUsername != null)
+    {
+      $sUserCombo = rawurlencode($sUsername);
+      if($sPassword != null && strlen($sPassword) > 0)
+      {
+        $sUserCombo .= ":".rawurlencode($sPassword);
+      }
+      if(startsWith($sTarget, "http://"))
+      {
+        $sNewTarget = substr($sTarget, strlen("http://"));
+        $sNewTarget = "http://".$sUserCombo."@".$sNewTarget;
+      }
+      else if(startsWith($sTarget, "https://"))
+      {
+        $sNewTarget = substr($sTarget, strlen("https://"));
+        $sNewTarget = "https://".$sUserCombo."@".$sNewTarget;
+      }
+      else if(startsWith($sTarget, "git://"))
+      {
+        $sNewTarget = substr($sTarget, strlen("git://"));
+        $sNewTarget = "git://".$sUserCombo."@".$sNewTarget;
+      }
+      else
+      {
+        $bSuccess = false;
+      }
+    }
+    if($bSuccess)
+    {
+      if($sNewTarget) $sNewTarget = CcStringUtil::addQuotes($sNewTarget);
+      if($sTargetBranch) $sTargetBranch = CcStringUtil::addQuotes($sTargetBranch);
+      $sCommand = "push $sNewTarget $sTargetBranch";
+      $bSuccess = $this->run($sCommand);
+    }
+    return $bSuccess;
   }
   
+  /**
+   * @brief Create a bare project on current location
+   *        It will also create a Readme.md within Repository.
+   * @return true if succeede.
+   */
   public function createBare()
   {
     $bSuccess = false;
@@ -90,7 +146,7 @@ class CcGitApp extends CcProcess
           {
             if($oTmpRepo->commit("Initial commit"))
             {
-              if($oTmpRepo->push("", "origin", "master"))
+              if($oTmpRepo->push("origin", "master"))
               {
                 CcFilesystemUtil::RemoveDir($this->getWorkingDir()."/tmp", true);
                 $bSuccess = true;
@@ -123,6 +179,11 @@ class CcGitApp extends CcProcess
     return $bSuccess;
   }
   
+  /**
+   * @brief Init a bare repositoy by cloning from remote URL.
+   * @param string $sUrl: URL to clone from
+   * @return true if succeeded
+   */
   public function cloneMirror($sUrl)
   {
     $bSuccess = false;
@@ -222,7 +283,7 @@ class CcGitApp extends CcProcess
     if($this->start($sArguments))
     {
       $this->sResult = $this->readAll();
-      $iReturn =$this->close();
+      $iReturn = $this->close();
     }
     return $iReturn==0;
   }

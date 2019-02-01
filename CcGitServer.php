@@ -505,7 +505,7 @@ class CcGitServer
     {
       echo "exec disabled\n";
     }
-    else if(chdir($sWorkinwriteDebugLoggDir))
+    else if(chdir($sWorkingDir))
     {
       exec("git ". $sParam, $aOutput, $iReturn);
     }
@@ -531,7 +531,7 @@ class CcGitServer
   
   /**
    * Set Git Server in commandline mode to get debug messages
-   * @param ILinkConverter $oLinkConverter
+   * @param bool $bOn true enable cli mode, false to disable it.
    */
   public static function setCli($bOn = true)
   {

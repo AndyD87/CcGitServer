@@ -138,17 +138,19 @@ class CcProcess
    */
   public function close()
   {
+    $iResult = -1;
     for($i=0; $i < count($this->aPipes); $i++)
     {
-      if($this->aPipes[$i]) fclose($this->aPipes[$i]);
+      if($this->aPipes[$i] != null) fclose($this->aPipes[$i]);
       $this->aPipes[$i] = null;
     }
     if($this->pProcess != null)
     {
+      $iResult = $this->getExitCode();
       $i = proc_close($this->pProcess);
       $this->pProcess = null;
     }
-    return $this->getExitCode();
+    return $iResult;
   }
   
   /**
@@ -167,7 +169,7 @@ class CcProcess
   }
   
   /**
-   * Working directory to exectute in. 
+   * Working directory to exectute in.
    * If empty, current dir will be used.
    * @param string $sWorkingDir: New working directory
    */
@@ -233,7 +235,7 @@ class CcProcess
   }
   
   /**
-   * 
+   *
    * @param number $iMaxLength: Maximum length of line to read
    * @return string
    */
@@ -253,23 +255,45 @@ class CcProcess
     return $iWritten;
   }
   
+  /**
+   * @brief Check if current process is in a running state.
+   * @return bool true if running
+   */
   public function isRunning()
   {
-    if($this->pProcess)
+    if($this->pProcess != null)
+    {
       $this->aStatus = proc_get_status($this->pProcess);
+    }
     return $this->aStatus["running"];
   }
   
+  /**
+   * @brief Wait for process until isRunning is false
+   */
   public function waitFinished()
   {
     while($this->isRunning());
   }
   
+  /**
+   * @brief Get Exitcode of closed process.
+   * @return number ExitCode as number
+   */
   public function getExitCode()
   {
-    return $this->aStatus["exitcode"];
+    if($this->pProcess != null)
+    {
+      $this->aStatus = proc_get_status($this->pProcess);
+    }
+    $iResult = $this->aStatus["exitcode"];
+    return $iResult;
   }
   
+  /**
+   * @brief Get setted working dir of this prosses.
+   * @return string Current Working dir or empty if not yet set.
+   */
   public function getWorkingDir()
   {
     return $this->sWorkingDir;
@@ -289,7 +313,7 @@ class CcProcess
     if($sData != null)
     {
       $sData = "";
-      while($this->isRunning()) $sData .= $this->readAll();
+      while($oProc->isRunning()) $sData .= $oProc->readAll();
     }
     else
     {
