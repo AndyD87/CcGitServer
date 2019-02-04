@@ -399,6 +399,7 @@ class CcGitServer
   {
     $bSuccess = false;
     $sPath = $this->getLinkConverter()->convertLinkToPath($sPath);
+    if(!CcStringUtil::endsWith($sPath, ".git")) $sPath .= ".git";
     if(is_dir($sPath) || mkdir($sPath, 0775, true))
     {
       $oGitApp = new CcGitApp($sPath);
