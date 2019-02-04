@@ -32,7 +32,7 @@ require_once "CcFilesystemUtil.php";
 require_once "CcWebDav.php";
 require_once "CcLinkConverter.php";
 require_once "CcGitServerAuth.php";
-require_once 'CcProcess.php';
+require_once "CcGitApp.php";
 
 class CcGitServer
 {
