@@ -282,6 +282,7 @@ class CcGitApp extends CcProcess
     $iReturn = -1;
     if($this->start($sArguments))
     {
+      while($this->isRunning());
       $this->sResult = $this->readAll();
       $iReturn = $this->close();
     }

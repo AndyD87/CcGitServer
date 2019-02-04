@@ -397,8 +397,14 @@ class CcGitServer
    */
   public function createRepository($sPath)
   {
-    $oGitApp = new CcGitApp($sPath);
-    return $oGitApp->createBare();
+    $bSuccess = false;
+    $sPath = $this->getLinkConverter()->convertLinkToPath($sPath);
+    if(is_dir($sPath) || mkdir($sPath, 0775, true))
+    {
+      $oGitApp = new CcGitApp($sPath);
+      $bSuccess = $oGitApp->createBare();
+    }
+    return $bSuccess;
   }
   
   private function execHttp()

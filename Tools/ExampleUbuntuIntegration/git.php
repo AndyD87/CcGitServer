@@ -83,14 +83,7 @@ class CustomLinkConverter extends NGitServer\CcLinkConverter
       }
       $sPath = $this->getRootPath()."/".$sPath;
       $sPath = CcStringUtil::cleanPath($sPath);
-      if($this->isPathValid($sPath))
-      {
-        return $sPath;
-      }
-      else
-      {
-        return false;
-      }
+      return $sPath;
     }
     return false;
   }
