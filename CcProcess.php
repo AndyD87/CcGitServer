@@ -254,6 +254,21 @@ class CcProcess
     $iWritten = fwrite($this->aPipes[0], $sData);
     return $iWritten;
   }
+
+  public function getStatus()
+  {
+    $bSuccess = true;
+    if($this->aStatus == null ||
+       $this->aStatus["running"] == true)
+    {
+      if($this->pProcess != null)
+      {
+        $this->aStatus = proc_get_status($this->pProcess);
+      }
+    }
+    if($this->aStatus == null) $bSuccess = false;
+    return $bSuccess;
+  }
   
   /**
    * @brief Check if current process is in a running state.
@@ -261,11 +276,12 @@ class CcProcess
    */
   public function isRunning()
   {
-    if($this->pProcess != null)
+    $bSuccess = false;
+    if($this->getStatus())
     {
-      $this->aStatus = proc_get_status($this->pProcess);
+      $bSuccess = $this->aStatus["running"];
     }
-    return $this->aStatus["running"];
+    return $bSuccess;
   }
   
   /**
@@ -282,11 +298,11 @@ class CcProcess
    */
   public function getExitCode()
   {
-    if($this->pProcess != null)
+    $iResult = -1;
+    if($this->getStatus())
     {
-      $this->aStatus = proc_get_status($this->pProcess);
+      $iResult = $this->aStatus["exitcode"];
     }
-    $iResult = $this->aStatus["exitcode"];
     return $iResult;
   }
   

@@ -26,11 +26,9 @@
  */
 
 namespace NGitServer;
-use NWebpage\CcStringUtil;
 
 require_once 'CcGitServer.php';
 require_once 'CcStringUtil.php';
-
 require_once 'CcProcess.php';
 
 /**
