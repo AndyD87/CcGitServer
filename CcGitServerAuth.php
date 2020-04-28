@@ -39,11 +39,13 @@ class CcGitServerAuthUser
    * @var bool $bIsAdmin
    */
   public $bIsAdmin;
+  
   /**
    * Name of this user
    * @var string $sUsername
    */
   private $sUsername;
+  
   /**
    * sha256 hash value of a password for this user.
    * @var string $sPassword

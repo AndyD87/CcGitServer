@@ -121,6 +121,55 @@ class CcGitApp extends CcProcess
   }
   
   /**
+   * @brief Pull branch from a remote repository
+   *
+   * @param string $sTarget:        Url or path to pull from.
+   * @param string $sTargetBranch:  Local and remote branch to commit. (+refs/heads/*:refs/heads/*)
+   * @param string $sUsername:      Optional Username if required
+   * @param string $sPassword:      Optional Password if required
+   * @return true if succeeded
+   */
+  public function pull($sTarget, $sTargetBranch, $sUsername = null, $sPassword = null)
+  {
+    $bSuccess = true;
+    $sNewTarget = $sTarget;
+    if($sUsername != null)
+    {
+      $sUserCombo = rawurlencode($sUsername);
+      if($sPassword != null && strlen($sPassword) > 0)
+      {
+        $sUserCombo .= ":".rawurlencode($sPassword);
+      }
+      if(startsWith($sTarget, "http://"))
+      {
+        $sNewTarget = substr($sTarget, strlen("http://"));
+        $sNewTarget = "http://".$sUserCombo."@".$sNewTarget;
+      }
+      else if(startsWith($sTarget, "https://"))
+      {
+        $sNewTarget = substr($sTarget, strlen("https://"));
+        $sNewTarget = "https://".$sUserCombo."@".$sNewTarget;
+      }
+      else if(startsWith($sTarget, "git://"))
+      {
+        $sNewTarget = substr($sTarget, strlen("git://"));
+        $sNewTarget = "git://".$sUserCombo."@".$sNewTarget;
+      }
+      else
+      {
+        $bSuccess = false;
+      }
+    }
+    if($bSuccess)
+    {
+      if($sNewTarget) $sNewTarget = CcStringUtil::addQuotes($sNewTarget);
+      if($sTargetBranch) $sTargetBranch = CcStringUtil::addQuotes($sTargetBranch);
+      $sCommand = "fetch $sNewTarget $sTargetBranch";
+      $bSuccess = $this->run($sCommand);
+    }
+    return $bSuccess;
+  }
+  /**
    * @brief Create a bare project on current location
    *        It will also create a Readme.md within Repository.
    * @return true if succeede.
